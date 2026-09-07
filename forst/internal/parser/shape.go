@@ -297,8 +297,9 @@ func (p *Parser) parseShapeLiteral(opts ShapeLiteralOpts) ast.ShapeNode {
 			if opts.ParseAsTypes {
 				fields[name] = p.parseShapeFieldTypeAfterColon(name, ShapeFieldTypeOpts{InShapeLiteral: true})
 			} else {
-				// Parse as value (literal context)
-				val := p.parseValue()
+				// Parse as expression so concat / calls work in shape field values
+				// (e.g. E({message: "a" + b})).
+				val := p.parseExpression()
 				p.log.WithFields(logrus.Fields{
 					"fieldName": name,
 					"valType":   fmt.Sprintf("%T", val),
@@ -342,15 +343,18 @@ func (p *Parser) parseShapeLiteral(opts ShapeLiteralOpts) ast.ShapeNode {
 					}).Debug("Set Type field for variable reference")
 				}
 				if _, isShape := val.(ast.ShapeNode); !isShape {
-					field.Assertion = &ast.AssertionNode{
-						BaseType: nil,
-						Constraints: []ast.ConstraintNode{{
-							Name: string(ast.ValueConstraint),
-							Args: []ast.ConstraintArgumentNode{{
-								Value: &val,
+					if vn, ok := val.(ast.ValueNode); ok {
+						field.Assertion = &ast.AssertionNode{
+							BaseType: nil,
+							Constraints: []ast.ConstraintNode{{
+								Name: string(ast.ValueConstraint),
+								Args: []ast.ConstraintArgumentNode{{
+									Value: &vn,
+								}},
 							}},
-						}},
+						}
 					}
+					// Non-value expressions (concat, calls) live only on field.Node.
 				}
 				fields[name] = field
 			}

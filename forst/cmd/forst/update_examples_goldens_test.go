@@ -92,7 +92,7 @@ func TestUpdateExamplesGoldens(t *testing.T) {
 }
 
 func shouldSkipExampleGoldenUpdate(relPath string) bool {
-	if strings.HasSuffix(relPath, ".skip.ft") {
+	if isWipExampleSkip(relPath) {
 		return true
 	}
 	if strings.HasPrefix(relPath, "tictactoe/") {

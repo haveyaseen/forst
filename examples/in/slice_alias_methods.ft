@@ -1,0 +1,24 @@
+package main
+
+// Named slice aliases work with append/len and mutual methods.
+// Golden: ../out/slice_alias_methods.go
+type ExprList = []String
+
+type P = {n: Int}
+
+func (p *P) a(): ExprList {
+	if p.n == 0 {
+		return []String{}
+	}
+	return p.b()
+}
+
+func (p *P) b(): ExprList {
+	xs := p.a()
+	return append(xs, "y")
+}
+
+func main() {
+	p := &P{n: 0}
+	println(len(p.a()))
+}

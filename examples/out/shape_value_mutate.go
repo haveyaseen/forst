@@ -8,6 +8,7 @@ func bump(a Acc) Acc {
 	a.n = a.n + 1
 	return a
 }
+
 func main() {
 	a := Acc{n: 0}
 	a = bump(a)

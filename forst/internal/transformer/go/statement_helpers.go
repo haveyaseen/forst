@@ -40,7 +40,7 @@ func (t *Transformer) enclosingReturnTypes(fnNode ast.Node) ([]ast.TypeNode, str
 	}
 }
 
-// transformEnsureErrorFallback lowers `ensure … or Bad("msg")` / `or errVar` to a Go expression.
+// transformEnsureErrorFallback lowers `ensure … else Bad("msg")` / `else errVar` / method calls.
 func (t *Transformer) transformEnsureErrorFallback(errorNode ast.EnsureErrorNode) (goast.Expr, error) {
 	switch e := errorNode.(type) {
 	case ast.EnsureErrorCall:
@@ -68,6 +68,8 @@ func (t *Transformer) transformEnsureErrorFallback(errorNode ast.EnsureErrorNode
 		}, nil
 	case ast.EnsureErrorVar:
 		return goast.NewIdent(string(e)), nil
+	case ast.EnsureErrorExpr:
+		return t.transformExpression(e.Expr)
 	default:
 		return nil, fmt.Errorf("unsupported ensure error fallback: %T", errorNode)
 	}
@@ -93,26 +95,66 @@ func (t *Transformer) ensureFailureErrorExpr(stmt ast.EnsureNode) (goast.Expr, e
 	if stmt.Error != nil {
 		return t.transformEnsureErrorFallback(*stmt.Error)
 	}
-	if t.ensureImplicitlyPropagatesError(stmt) {
-		return t.transformExpression(stmt.Variable)
+	if expr, ok := t.ensurePropagatedFailureExpr(stmt); ok {
+		return expr, nil
 	}
 	return t.defaultAssertionErrorExpr(stmt), nil
 }
 
-// ensureImplicitlyPropagatesError reports whether a bare absence check can use
-// its subject as the failure value. This makes both `ensure !err` and
-// `ensure err is Nil()` shorthand for `ensure !err else err`, while leaving
-// Nil() checks on other nilable values with the normal assertion error.
-func (t *Transformer) ensureImplicitlyPropagatesError(stmt ast.EnsureNode) bool {
-	if stmt.Error != nil || !ensureIsOnlyNilAssertion(stmt) {
-		return false
+// ensurePropagatedFailureExpr returns the subject's error value for bare propagate sugar:
+// `ensure !err`, `ensure err is Nil()`, and `ensure x is Ok()` on a Result.
+func (t *Transformer) ensurePropagatedFailureExpr(stmt ast.EnsureNode) (goast.Expr, bool) {
+	if stmt.Error != nil {
+		return nil, false
 	}
-
 	variableType, err := t.TypeChecker.LookupVariableType(&stmt.Variable, t.currentScope())
 	if err != nil {
+		return nil, false
+	}
+
+	// Result Ok() → error slot (xErr or the Void-Result binding itself).
+	if ensureIsOnlyOkAssertion(stmt) {
+		if t.resultLocalSplit != nil {
+			if split, ok := t.resultLocalSplit[string(stmt.Variable.Ident.ID)]; ok && split.errGoName != "" {
+				return goast.NewIdent(split.errGoName), true
+			}
+		}
+		if variableType.IsResultType() && len(variableType.TypeParams) >= 1 &&
+			variableType.TypeParams[0].Ident == ast.TypeVoid {
+			// Result(Void) lowers to a single error binding named like the Forst local.
+			return goast.NewIdent(string(stmt.Variable.Ident.ID)), true
+		}
+		return nil, false
+	}
+
+	if !ensureIsOnlyNilAssertion(stmt) {
+		return nil, false
+	}
+	if variableType.IsResultType() && len(variableType.TypeParams) >= 1 &&
+		variableType.TypeParams[0].Ident == ast.TypeVoid {
+		if t.resultLocalSplit != nil {
+			if split, ok := t.resultLocalSplit[string(stmt.Variable.Ident.ID)]; ok && split.errGoName != "" {
+				return goast.NewIdent(split.errGoName), true
+			}
+		}
+		return goast.NewIdent(string(stmt.Variable.Ident.ID)), true
+	}
+	if !t.TypeChecker.IsTypeCompatible(variableType, ast.TypeNode{Ident: ast.TypeError}) {
+		return nil, false
+	}
+	expr, err := t.transformExpression(stmt.Variable)
+	if err != nil {
+		return nil, false
+	}
+	return expr, true
+}
+
+func ensureIsOnlyOkAssertion(stmt ast.EnsureNode) bool {
+	if stmt.Assertion.BaseType != nil || len(stmt.Assertion.Constraints) != 1 {
 		return false
 	}
-	return t.TypeChecker.IsTypeCompatible(variableType, ast.TypeNode{Ident: ast.TypeError})
+	c := stmt.Assertion.Constraints[0]
+	return c.Name == "Ok" && len(c.Args) == 0
 }
 
 func ensureIsOnlyNilAssertion(stmt ast.EnsureNode) bool {
@@ -123,10 +165,56 @@ func ensureIsOnlyNilAssertion(stmt ast.EnsureNode) bool {
 		}
 	}
 	if !ok || len(target.Chains) != 1 {
+		// Fall back to Assertion when Target unset (specialized sugar).
+		if len(stmt.Assertion.Constraints) == 1 && stmt.Assertion.Constraints[0].Name == "Nil" {
+			return len(stmt.Assertion.Constraints[0].Args) == 0
+		}
 		return false
 	}
 	chain := target.Chains[0]
 	return len(chain.Constraints) == 1 && chain.Constraints[0].Name == "Nil" && len(chain.Constraints[0].Args) == 0
+}
+
+// specializeEnsureForEmit resolves bare/bang ensure sugar using the subject type.
+func (t *Transformer) specializeEnsureForEmit(ensure ast.EnsureNode) (ast.EnsureNode, error) {
+	variableType, err := t.TypeChecker.LookupVariableType(&ensure.Variable, t.currentScope())
+	if err != nil {
+		variableType = ast.TypeNode{}
+	}
+	// After Ok() narrowing, LookupVariableType may be the success payload (e.g. Void).
+	// Prefer Result(Void) when this local is a folded void-Result error binding.
+	if t.isVoidResultErrorBinding(ensure.Variable) {
+		variableType = ast.NewResultType(
+			ast.TypeNode{Ident: ast.TypeVoid},
+			ast.TypeNode{Ident: ast.TypeError},
+		)
+	}
+
+	if ensure.Implicit == ast.EnsureImplicitNone && len(ensure.Assertion.Constraints) > 0 {
+		if ensureIsOnlyNilAssertion(ensure) && variableType.IsResultType() &&
+			len(variableType.TypeParams) >= 1 && variableType.TypeParams[0].Ident == ast.TypeVoid {
+			okAssert := ast.ConstraintOnlyAssertion("Ok")
+			ensure.Assertion = okAssert
+			ensure.Target = ast.AssertionTarget{Chains: []ast.AssertionNode{okAssert}}
+		}
+		return ensure, nil
+	}
+	if ensure.Implicit == ast.EnsureImplicitNone {
+		return ensure, nil
+	}
+	return t.TypeChecker.SpecializeEnsureSugar(ensure, variableType)
+}
+
+func (t *Transformer) isVoidResultErrorBinding(vn ast.VariableNode) bool {
+	if isDotQualifiedVariable(vn) || t.resultLocalSplit == nil {
+		return false
+	}
+	split, ok := t.resultLocalSplit[string(vn.Ident.ID)]
+	if !ok || split.errGoName == "" {
+		return false
+	}
+	// Void Result assign uses errGoName == Forst name and no success slots.
+	return split.errGoName == string(vn.Ident.ID) && len(split.successGoNames) == 0
 }
 
 // getAssertionStringForError returns a properly qualified assertion string for error messages

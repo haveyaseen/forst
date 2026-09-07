@@ -138,6 +138,8 @@ func (tc *TypeChecker) errorSetFromEnsure(stmt ast.EnsureNode) FunctionErrorSet 
 			}
 			acc.addNominals(noms)
 		}
+	case ast.EnsureErrorExpr:
+		acc.markUnknown()
 	}
 	return acc.finish()
 }

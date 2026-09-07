@@ -119,6 +119,9 @@ func (w *hashWalk) hashScopeEnsure(n ast.EnsureNode) (NodeHash, error) {
 	if err := w.h.writeHashes(hasher, vh); err != nil {
 		return 0, err
 	}
+	if err := w.h.writeHashes(hasher, uint8(n.Implicit)); err != nil {
+		return 0, err
+	}
 	ah, err := w.hash(n.Assertion)
 	if err != nil {
 		return 0, err

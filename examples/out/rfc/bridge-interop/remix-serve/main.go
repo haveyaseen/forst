@@ -1,28 +1,35 @@
 package main
 
-import "strconv"
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+	"strconv"
+)
+
 // AddTodoRequest: TypeDefShapeExpr({title: String})
 type AddTodoRequest struct {
 	Title string `json:"title"`
 }
+
 // AddTodoResponse: TypeDefShapeExpr({id: String, title: String, status: String})
 type AddTodoResponse struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
 	Title  string `json:"title"`
 }
+
 // CompleteTodoRequest: TypeDefShapeExpr({id: String})
 type CompleteTodoRequest struct {
 	Id string `json:"id"`
 }
+
 // CompleteTodoResponse: TypeDefShapeExpr({id: String, title: String, status: String})
 type CompleteTodoResponse struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
 	Title  string `json:"title"`
 }
+
 // DashboardResponse: TypeDefShapeExpr({open: Int, recentTitles: String, activityKinds: String, savedAt: String})
 type DashboardResponse struct {
 	ActivityKinds string `json:"activityKinds"`
@@ -30,12 +37,14 @@ type DashboardResponse struct {
 	RecentTitles  string `json:"recentTitles"`
 	SavedAt       string `json:"savedAt"`
 }
+
 // ListTodosResponse: TypeDefShapeExpr({open: Int, done: Int, encoded: String})
 type ListTodosResponse struct {
 	Done    int    `json:"done"`
 	Encoded string `json:"encoded"`
 	Open    int    `json:"open"`
 }
+
 // T_7nWLvcjQ76D: TypeDefShapeExpr({activityKinds: Value("ready"), open: Value(Variable(open)), recentTitles: Value(""), savedAt: Value(Variable(snap.savedAt))})
 type T_7nWLvcjQ76D struct {
 	ActivityKinds string  `json:"activityKinds"`
@@ -43,69 +52,77 @@ type T_7nWLvcjQ76D struct {
 	RecentTitles  string  `json:"recentTitles"`
 	SavedAt       string  `json:"savedAt"`
 }
+
 type T_8ycLsMp1YzS struct {
 	SavedAt string `json:"savedAt"`
 }
+
 // T_D415raHQ7uQ: TypeDefShapeExpr({done: Value(Variable(done)), encoded: Value(Variable(encoded)), open: Value(Variable(open))})
 type T_D415raHQ7uQ struct {
 	Done    float64 `json:"done"`
 	Encoded string  `json:"encoded"`
 	Open    float64 `json:"open"`
 }
+
 type T_KuaRmDfgFpc struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
 	Title  string `json:"title"`
 }
+
 type T_LKhz7DyfNqT struct {
 	Kind string `json:"kind"`
 }
 
-func AddTodo(input AddTodoRequest) AddTodoResponse {
+func AddTodo(input AddTodoRequest) (AddTodoResponse, error) {
 	println("api:AddTodo:" + input.Title)
 	created, createdErr := forst_bridge_callsync_legacy_todos_js_addTodo(input.Title)
 	if createdErr != nil {
-		return AddTodoResponse{Id: "", Title: "", Status: ""}
+		return AddTodoResponse{Status: "", Id: "", Title: ""}, createdErr
 	}
-	return AddTodoResponse{Id: created.Id, Title: created.Title, Status: created.Status}
+	return AddTodoResponse{Id: created.Id, Title: created.Title, Status: created.Status}, nil
 }
-func CompleteTodo(input CompleteTodoRequest) AddTodoResponse {
+
+func CompleteTodo(input CompleteTodoRequest) (CompleteTodoResponse, error) {
 	println("api:CompleteTodo:" + input.Id)
 	updated, updatedErr := forst_bridge_callsync_legacy_todos_js_toggleTodo(input.Id)
 	if updatedErr != nil {
-		return AddTodoResponse{Status: "", Id: "", Title: ""}
+		return CompleteTodoResponse{Id: "", Title: "", Status: ""}, updatedErr
 	}
-	return AddTodoResponse{Id: updated.Id, Title: updated.Title, Status: updated.Status}
+	return CompleteTodoResponse{Id: updated.Id, Title: updated.Title, Status: updated.Status}, nil
 }
-func GetDashboard() T_7nWLvcjQ76D {
+
+func GetDashboard() (T_7nWLvcjQ76D, error) {
 	println("api:GetDashboard")
 	open, openErr := forst_bridge_callsync_legacy_todos_js_openCount()
 	if openErr != nil {
-		return T_7nWLvcjQ76D{SavedAt: "", Open: 0.0, RecentTitles: "", ActivityKinds: ""}
+		return T_7nWLvcjQ76D{Open: 0.0, RecentTitles: "", ActivityKinds: "", SavedAt: ""}, openErr
 	}
 	snap, snapErr := forst_bridge_callasync_legacy_todos_js_persistSnapshot()
 	if snapErr != nil {
-		return T_7nWLvcjQ76D{Open: 0.0, RecentTitles: "", ActivityKinds: "", SavedAt: ""}
+		return T_7nWLvcjQ76D{SavedAt: "", Open: 0.0, RecentTitles: "", ActivityKinds: ""}, snapErr
 	}
-	return T_7nWLvcjQ76D{Open: open, RecentTitles: "", ActivityKinds: "ready", SavedAt: snap.SavedAt}
+	return T_7nWLvcjQ76D{Open: open, RecentTitles: "", ActivityKinds: "ready", SavedAt: snap.SavedAt}, nil
 }
-func ListTodos() T_D415raHQ7uQ {
+
+func ListTodos() (T_D415raHQ7uQ, error) {
 	println("api:ListTodos")
 	encoded, encodedErr := forst_bridge_callsync_legacy_todos_js_formatTodoList()
 	if encodedErr != nil {
-		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}
+		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}, encodedErr
 	}
 	open, openErr := forst_bridge_callsync_legacy_todos_js_openCount()
 	if openErr != nil {
-		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}
+		return T_D415raHQ7uQ{Done: 0.0, Encoded: "", Open: 0.0}, openErr
 	}
 	total, totalErr := forst_bridge_callsync_legacy_todos_js_todoCount()
 	if totalErr != nil {
-		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}
+		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}, totalErr
 	}
 	done := total - open
-	return T_D415raHQ7uQ{Open: open, Done: done, Encoded: encoded}
+	return T_D415raHQ7uQ{Open: open, Done: done, Encoded: encoded}, nil
 }
+
 func main() {
 	first, firstErr := forst_bridge_callsync_legacy_todos_js_bumpEditCount()
 	if firstErr != nil {

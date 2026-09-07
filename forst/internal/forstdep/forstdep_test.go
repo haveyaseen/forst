@@ -9,10 +9,10 @@ import (
 	"forst/internal/testmod"
 )
 
-func TestForstFilesInDir_skipsTestsAndSkipFt(t *testing.T) {
+func TestForstFilesInDir_skipsTestsIncludesSkipFt(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	for _, name := range []string{"ok.ft", "x_test.ft", "broken.skip.ft", "helpers.go"} {
+	for _, name := range []string{"ok.ft", "x_test.ft", "draft.skip.ft", "helpers.go"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("package lib\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -21,8 +21,15 @@ func TestForstFilesInDir_skipsTestsAndSkipFt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || filepath.Base(got[0]) != "ok.ft" {
-		t.Fatalf("got %v, want [ok.ft]", got)
+	bases := make(map[string]bool, len(got))
+	for _, p := range got {
+		bases[filepath.Base(p)] = true
+	}
+	if !bases["ok.ft"] || !bases["draft.skip.ft"] {
+		t.Fatalf("got %v, want ok.ft and draft.skip.ft", got)
+	}
+	if bases["x_test.ft"] {
+		t.Fatalf("got %v, must still skip *_test.ft", got)
 	}
 }
 

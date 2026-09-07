@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"forst/internal/ast"
 	"forst/internal/lexer"
 	"forst/internal/parser"
 	"forst/internal/testmod"
@@ -50,6 +51,59 @@ func main() {
 	tc.SetSamePackageGoImportPath("example.com/baglit/app")
 	if err := tc.CheckTypes(nodes); err != nil {
 		t.Fatalf("expected Bag literal assignable to Go Bag: %v", err)
+	}
+}
+
+func TestSamePackageGo_namedSliceAliasFromGo(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	testmod.WriteGoMod(t, root, "example.com/exprlist")
+	pkgDir := filepath.Join(root, "app")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "helpers.go"), []byte(`package main
+
+type Expr struct {
+	Kind string
+}
+
+type ExprList []Expr
+
+func EmptyExprs() ExprList { return nil }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := `package main
+
+func main() {
+	xs := EmptyExprs()
+	println(len(xs))
+}
+`
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+	toks := lexer.New([]byte(src), "app/main.ft", log).Lex()
+	nodes, err := parser.New(toks, "app/main.ft", log).ParseFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc := New(log, false)
+	tc.GoWorkspaceDir = root
+	tc.SetSamePackageGoImportPath("example.com/exprlist/app")
+	if err := tc.CheckTypes(nodes); err != nil {
+		t.Fatalf("expected Go named slice ExprList usable from Forst: %v", err)
+	}
+	vt, ok := tc.VariableTypes["xs"]
+	if !ok || len(vt) != 1 {
+		t.Fatalf("xs types: %+v ok=%v", vt, ok)
+	}
+	if vt[0].Ident != "ExprList" {
+		// Prefer named slice; underlying Array(String) after alias resolve is also acceptable.
+		resolved := tc.resolveTypeAliasChain(vt[0])
+		if resolved.Ident != ast.TypeArray {
+			t.Fatalf("xs type = %v, want ExprList or Array", formatTypeList(vt))
+		}
 	}
 }
 

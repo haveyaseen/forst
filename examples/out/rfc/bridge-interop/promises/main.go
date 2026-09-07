@@ -1,13 +1,16 @@
 package main
 
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+)
 
 type T_BSiWS9EsB18 struct {
 	Amount   float64 `json:"amount"`
 	Currency string  `json:"currency"`
 	Id       string  `json:"id"`
 }
+
 type T_NTbLJjyksQg struct {
 	Echo float64 `json:"echo"`
 }

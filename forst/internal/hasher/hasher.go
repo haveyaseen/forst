@@ -514,6 +514,9 @@ func (w *hashWalk) hashUncached(node ast.Node) (NodeHash, error) {
 		if err := w.h.writeHashes(hasher, vh); err != nil {
 			return 0, err
 		}
+		if err := w.h.writeHashes(hasher, uint8(n.Implicit)); err != nil {
+			return 0, err
+		}
 		hash, err := w.hash(n.Assertion)
 		if err != nil {
 			return 0, err

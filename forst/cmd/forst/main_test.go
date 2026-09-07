@@ -468,8 +468,8 @@ func TestExamples(t *testing.T) {
 
 		t.Run(relPath, func(t *testing.T) {
 			t.Parallel()
-			if strings.HasSuffix(info.Name(), ".skip.ft") || strings.HasSuffix(info.Name(), ".skip.go") {
-				t.Skip("Skipping test file", relPath)
+			if isWipExampleSkip(relPath) {
+				t.Skip("WIP example sketch (not a golden)", relPath)
 				return
 			}
 

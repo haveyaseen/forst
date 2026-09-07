@@ -53,21 +53,25 @@ func TestFindForstFiles_skipsVendorGitNodeModules(t *testing.T) {
 	}
 }
 
-func TestFindForstFiles_skipsSkipFtSuffix(t *testing.T) {
+func TestFindForstFiles_includesSkipFtSuffix(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "ok.ft"), []byte("package main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "broken.skip.ft"), []byte("package main\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "draft.skip.ft"), []byte("package main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	got, err := findForstFiles(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || filepath.Base(got[0]) != "ok.ft" {
-		t.Fatalf("got %v", got)
+	bases := make(map[string]bool, len(got))
+	for _, p := range got {
+		bases[filepath.Base(p)] = true
+	}
+	if !bases["ok.ft"] || !bases["draft.skip.ft"] {
+		t.Fatalf("got %v, want both ok.ft and draft.skip.ft (no .skip.ft magic)", got)
 	}
 }
 

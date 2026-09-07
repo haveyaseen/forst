@@ -8,11 +8,11 @@ import (
 
 // ensureMissingIsReport explains that ensure requires `is` (bare Bool / `or` is not enough).
 func ensureMissingIsReport(subject string, found ast.Token) (code, title, problem, help string) {
-	help = fmt.Sprintf("for Bool values write:\n\n    ensure %s is True()", subject)
+	help = fmt.Sprintf("for Bool values write:\n\n    ensure %s is True()\n\nor bare:\n\n    ensure %s", subject, subject)
 	switch found.Type {
 	case ast.TokenOr:
 		return "ensure-missing-is", "ensure needs `is` before `or`",
-			"After the subject, Forst expects `is` plus a constraint — not a bare `or`.",
+			"After the subject, Forst expects `is` plus a constraint — not a bare `or`. Use `else` for failure.",
 			help
 	case ast.TokenGreater, ast.TokenLess, ast.TokenGreaterEqual, ast.TokenLessEqual,
 		ast.TokenEquals, ast.TokenNotEquals, ast.TokenLogicalOr, ast.TokenLogicalAnd:
@@ -30,6 +30,22 @@ func ensureMissingIsReport(subject string, found ast.Token) (code, title, proble
 	}
 }
 
+func ensureStatementContinuesWithoutIs(tok ast.Token) bool {
+	switch tok.Type {
+	case ast.TokenElse, ast.TokenRBrace, ast.TokenEOF,
+		ast.TokenEnsure, ast.TokenReturn, ast.TokenIf, ast.TokenFor, ast.TokenSwitch,
+		ast.TokenDefer, ast.TokenGo, ast.TokenVar, ast.TokenConst, ast.TokenType,
+		ast.TokenFunc, ast.TokenBreak, ast.TokenContinue, ast.TokenFallthrough,
+		ast.TokenGoto:
+		return true
+	case ast.TokenIdentifier:
+		// Next statement often starts with an identifier (`x := …`, `println(…)`).
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *Parser) parseEnsureBlock() *ast.EnsureBlockNode {
 	body := []ast.Node{}
 
@@ -43,24 +59,26 @@ func (p *Parser) parseEnsureBlock() *ast.EnsureBlockNode {
 	return &ast.EnsureBlockNode{Body: body}
 }
 
-// parseEnsureError parses the typed failure after `else` (Error() call or error variable).
+// parseEnsureError parses the typed failure after `else` as a full expression,
+// normalizing Ident / Ident(args) to EnsureErrorVar / EnsureErrorCall.
 func (p *Parser) parseEnsureError() *ast.EnsureErrorNode {
-	errorTok := p.expect(ast.TokenIdentifier)
-	errorType := errorTok.Value
+	expr := p.parseExpression()
 	var err ast.EnsureErrorNode
-	if p.current().Type == ast.TokenLParen {
-		p.advance() // Consume left paren
-		var args []ast.ExpressionNode
-		for p.current().Type != ast.TokenRParen {
-			args = append(args, p.parseExpression())
-			if p.current().Type == ast.TokenComma {
-				p.advance()
-			}
+	switch e := expr.(type) {
+	case ast.FunctionCallNode:
+		if e.Function.ID != "" && !strings.Contains(string(e.Function.ID), ".") {
+			err = ast.EnsureErrorCall{ErrorType: string(e.Function.ID), ErrorArgs: e.Arguments}
+		} else {
+			err = ast.EnsureErrorExpr{Expr: expr}
 		}
-		p.expect(ast.TokenRParen)
-		err = ast.EnsureErrorCall{ErrorType: errorType, ErrorArgs: args}
-	} else {
-		err = ast.EnsureErrorVar(errorType)
+	case ast.VariableNode:
+		if !strings.Contains(string(e.Ident.ID), ".") {
+			err = ast.EnsureErrorVar(string(e.Ident.ID))
+		} else {
+			err = ast.EnsureErrorExpr{Expr: expr}
+		}
+	default:
+		err = ast.EnsureErrorExpr{Expr: expr}
 	}
 	return &err
 }
@@ -71,14 +89,15 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 	var variable ast.VariableNode
 	var assertion ast.AssertionNode
 	var target ast.RefinementTarget
+	implicit := ast.EnsureImplicitNone
 
-	// Handle special case for negated variable check
+	// Handle special case for negated variable check: `ensure !x`
 	if p.current().Type == ast.TokenLogicalNot && p.peek().Type == ast.TokenIdentifier {
 		p.advance() // Move past !
 		if p.peek().Type == ast.TokenLParen {
 			p.FailWithReport(p.current(), "ensure-negation-subject", "ensure ! needs a variable",
 				"After `ensure !`, Forst expects a variable name, not a call.",
-				"write `ensure !flag is True()`")
+				"write `ensure !flag` (Bool) or `ensure !err` (Error)")
 		}
 		tok := p.current()
 		variable = ast.VariableNode{
@@ -88,18 +107,14 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 			},
 		}
 		p.advance() // Move past variable
-		// Create implicit Nil() assertion
-		errorType := ast.TypeError
-		assertion = ast.AssertionNode{
-			BaseType: &errorType,
-			Constraints: []ast.ConstraintNode{
-				{
-					Name: "Nil",
-					Args: []ast.ConstraintArgumentNode{},
-				},
-			},
+		if p.current().Type == ast.TokenIs {
+			subj := string(variable.Ident.ID)
+			p.FailWithReport(p.current(), "ensure-bang-is", "`!` and `is` cannot combine",
+				"After `ensure !"+subj+"`, Forst expects the end of the statement or `else`, not `is`.",
+				fmt.Sprintf("write `ensure %s is …` (put the constraint on the subject) or bare `ensure !%s`", subj, subj))
 		}
-		target = ast.AssertionTarget{Chains: []ast.AssertionNode{assertion}}
+		// Constraint is specialized from the subject type during typechecking.
+		implicit = ast.EnsureImplicitBang
 	} else {
 		// Reject non-place subjects early (calls, literals, arithmetic).
 		switch p.current().Type {
@@ -143,6 +158,11 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 			lastTok = nextTok
 		}
 
+		subjectSpan := ast.SpanBetweenTokens(firstTok, lastTok)
+		variable = ast.VariableNode{
+			Ident: ast.Ident{ID: curIdent, Span: subjectSpan},
+		}
+
 		// Reject arithmetic / comparison subjects: `a + b is …` never starts with two idents.
 		// `ensure a + b` hits `+` before `is`.
 		if p.current().Type != ast.TokenIs {
@@ -153,36 +173,41 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 					fmt.Sprintf("ensure subject must be a place, not an expression (%s).", tok.Type),
 					"bind the expression to a variable, then ensure on that name")
 			}
-			code, title, problem, help := ensureMissingIsReport(string(curIdent), tok)
-			p.FailWithReport(tok, code, title, problem, help)
-		}
-		p.expect(ast.TokenIs)
-		if tok := p.current(); tok.Type == ast.TokenTrue || tok.Type == ast.TokenFalse {
-			want := "True()"
-			if tok.Type == ast.TokenFalse {
-				want = "False()"
+			if tok.Type == ast.TokenOr {
+				code, title, problem, help := ensureMissingIsReport(string(curIdent), tok)
+				p.FailWithReport(tok, code, title, problem, help)
 			}
-			p.FailWithReport(tok, "ensure-boolean-literal", "ensure predicate must be a constraint",
-				"ensure predicate must be a constraint, not a boolean literal.",
-				fmt.Sprintf("use `ensure %s is %s`", curIdent, want))
-		}
+			// Bare `ensure x` / `ensure x else …` — specialize from subject type later.
+			if ensureStatementContinuesWithoutIs(tok) {
+				implicit = ast.EnsureImplicitBare
+			} else {
+				code, title, problem, help := ensureMissingIsReport(string(curIdent), tok)
+				p.FailWithReport(tok, code, title, problem, help)
+			}
+		} else {
+			p.expect(ast.TokenIs)
+			if tok := p.current(); tok.Type == ast.TokenTrue || tok.Type == ast.TokenFalse {
+				want := "True()"
+				if tok.Type == ast.TokenFalse {
+					want = "False()"
+				}
+				p.FailWithReport(tok, "ensure-boolean-literal", "ensure predicate must be a constraint",
+					"ensure predicate must be a constraint, not a boolean literal.",
+					fmt.Sprintf("use `ensure %s is %s`", curIdent, want))
+			}
 
-		subjectSpan := ast.SpanBetweenTokens(firstTok, lastTok)
-		variable = ast.VariableNode{
-			Ident: ast.Ident{ID: curIdent, Span: subjectSpan},
-		}
+			target, assertion = p.parseRefinementTarget()
 
-		target, assertion = p.parseRefinementTarget()
-
-		// Try to set the base type from the current scope if not set (simple subject only).
-		if assertion.BaseType == nil && p.context != nil && p.context.ScopeStack != nil {
-			scope := p.context.ScopeStack.CurrentScope()
-			if scope != nil {
-				parts := strings.Split(string(curIdent), ".")
-				baseIdent := parts[0]
-				if typeNode, ok := scope.Variables[baseIdent]; ok && len(parts) == 1 {
-					baseType := typeNode.Ident
-					assertion.BaseType = &baseType
+			// Try to set the base type from the current scope if not set (simple subject only).
+			if assertion.BaseType == nil && p.context != nil && p.context.ScopeStack != nil {
+				scope := p.context.ScopeStack.CurrentScope()
+				if scope != nil {
+					parts := strings.Split(string(curIdent), ".")
+					baseIdent := parts[0]
+					if typeNode, ok := scope.Variables[baseIdent]; ok && len(parts) == 1 {
+						baseType := typeNode.Ident
+						assertion.BaseType = &baseType
+					}
 				}
 			}
 		}
@@ -256,6 +281,7 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 		Variable:  variable,
 		Target:    target,
 		Assertion: assertion,
+		Implicit:  implicit,
 		Block:     block,
 		Error:     errNode,
 	}

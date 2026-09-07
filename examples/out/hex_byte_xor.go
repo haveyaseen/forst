@@ -7,6 +7,7 @@ func main() {
 	fmt.Println(xorMask(b)[0])
 	fmt.Println(0x36)
 }
+
 func xorMask(k []byte) []byte {
 	i := 0
 	for i < len(k) {

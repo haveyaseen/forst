@@ -167,6 +167,30 @@ Pointer fields also support
 [`.Present()` and `.Nil()`](/language/shapes-and-constraints). Full optional
 value types such as `T | Nil` are still [planned](/resources/roadmap).
 
+## Syntax sugar for common cases
+
+When the subject type is known, you can omit `is …` for a few common checks.
+`else` stays optional in every case.
+
+| Subject | Form | Meaning |
+| --- | --- | --- |
+| `Bool` | `ensure b` | `ensure b is True()` |
+| `Bool` | `ensure !b` | `ensure b is False()` |
+| `Result(S, F)` | `ensure x` | `ensure x is Ok()` |
+| `Result(Void, F)` | `ensure !x` | success (Error-shaped “no error”, same as `is Ok()`) |
+| `Error` / nilable | `ensure !err` | `ensure err is Nil()` |
+
+Other subject types still need an explicit `is` constraint.
+
+Do not write `ensure !x` when `x` is a `Result` that carries a success value.
+That form is ambiguous: for a boolean it means “false”, for a void Result it means
+“no error”, and for `Result(Bool, …)` a reader cannot tell which you meant.
+Use `ensure x is Ok()` or `ensure x is Err()` instead. Bare `ensure !x` only
+applies to void Results, booleans, and nilable values.
+
+Do not mix `!` with `is`. Write `ensure x is …` or bare `ensure !x`.
+`ensure !x is …` is a syntax error.
+
 ## Use a successful Result value
 
 Map lookups and other operations that may fail return `Result(V, Error)`.
@@ -177,9 +201,25 @@ Check for `Ok()` before using the successful value.
 After `ensure avail is Ok()`, `avail` has the value type stored in the map. The
 next check can safely compare the requested quantity with it.
 
-Use the same pattern for function calls that return a `Result`.
+Use the same pattern for function calls that return a `Result`. A bare
+`ensure x is Ok()` (no `else`) promotes the enclosing function to
+`Result` (except `main` and Go tests) and implicitly returns `x`'s error
+slot on failure — the dual of `ensure !err`. Writing `else x` is still valid
+and redundant. `ensure x is Err()` does **not** implicit-propagate; there is
+no inner error to forward when the check fails.
 
 <EnsurePlaceOrderOk />
+
+`else` may be any expression, including method calls and shape literals with
+concatenation:
+
+```ft
+ensure ok is True()
+	else p.errMsg("bad")
+
+ensure ok is True()
+	else E({message: "bad " + kw})
+```
 
 ## Choose a branch after a check
 
@@ -321,7 +361,11 @@ failed check exits the process instead of returning.
 See the ensure and narrowing examples on GitHub
 
 * [`examples/in/ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure.ft)
+* [`examples/in/ensure_bool.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure_bool.ft)
+* [`examples/in/ensure_else_method.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure_else_method.ft)
 * [`examples/in/result_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_ensure.ft)
+* [`examples/in/result_void_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_void_ensure.ft)
+* [`examples/in/result_unwrap_propagate.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_unwrap_propagate.ft)
 * [`examples/in/result_if.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_if.ft)
 
 ## Related

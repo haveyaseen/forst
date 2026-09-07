@@ -1,50 +1,62 @@
 package main
 
-import "errors"
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
 // CellTaken: TypeDefErrorExpr({row: Int, col: Int})
 type CellTaken struct {
 	Col int `json:"col"`
 	Row int `json:"row"`
 }
+
 // GameState: TypeDefShapeExpr({cells: Array(String), nextPlayer: String, status: String})
 type GameState struct {
 	Cells      []string `json:"cells"`
 	NextPlayer string   `json:"nextPlayer"`
 	Status     string   `json:"status"`
 }
+
 // MoveRequest: TypeDefShapeExpr({state: GameState, row: Int, col: Int})
 type MoveRequest struct {
 	Col   int       `json:"col"`
 	Row   int       `json:"row"`
 	State GameState `json:"state"`
 }
+
 // MoveResponse: TypeDefShapeExpr({state: GameState, message: String})
 type MoveResponse struct {
 	Message string    `json:"message"`
 	State   GameState `json:"state"`
 }
+
 // T_457hjtXXHcE: TypeDefShapeExpr({})
 type T_457hjtXXHcE struct {
 }
+
 // T_9JeN9CCBNk: TypeDefShapeExpr({})
 type T_9JeN9CCBNk struct {
 }
+
 // T_CQ83zP8NNan: TypeDefShapeExpr({})
 type T_CQ83zP8NNan struct {
 }
+
 // T_DskdZ5MpPeD: TypeDefShapeExpr({})
 type T_DskdZ5MpPeD struct {
 }
+
 // T_JTaataA3nDc: TypeDefShapeExpr({})
 type T_JTaataA3nDc struct {
 }
+
 // T_PNXTj8VxMub: TypeDefShapeExpr({})
 type T_PNXTj8VxMub struct {
 }
 
 func ApplyMove(req MoveRequest) (MoveResponse, error) {
-	if !G_cADKLRyByvZ(req.State) {
+	if !G_CkDVLU3nSxq(req.State) {
 		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, errors.New("ensure req.state is GameState.ValidBoard(): want GameState.ValidBoard()")
 	}
 	playing := req.State.Status == "playing"
@@ -56,19 +68,19 @@ func ApplyMove(req MoveRequest) (MoveResponse, error) {
 		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("row must be >= 0")
 	}
 	if row >= 3 {
-		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("row must be <= 2")
+		return MoveResponse{State: GameState{NextPlayer: "", Status: "", Cells: nil}, Message: ""}, invalidMove("row must be <= 2")
 	}
 	col := req.Col
 	if col <= -1 {
 		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("col must be >= 0")
 	}
 	if col >= 3 {
-		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("col must be <= 2")
+		return MoveResponse{Message: "", State: GameState{Cells: nil, NextPlayer: "", Status: ""}}, invalidMove("col must be <= 2")
 	}
 	idx := cellIndex(row, col)
 	cellEmpty := req.State.Cells[idx] == ""
 	if !cellEmpty {
-		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, CellTaken{Row: row, Col: col}
+		return MoveResponse{Message: "", State: GameState{Status: "", Cells: nil, NextPlayer: ""}}, CellTaken{Row: row, Col: col}
 	}
 	next := setCell(cloneCells(req.State.Cells), idx, req.State.NextPlayer)
 	np := opponent(req.State.NextPlayer)
@@ -83,13 +95,16 @@ func ApplyMove(req MoveRequest) (MoveResponse, error) {
 	}
 	return MoveResponse{Message: "ok", State: GameState{Cells: next, NextPlayer: np, Status: status}}, nil
 }
+
 func (e CellTaken) Error() string {
 	return "error"
 }
+
 func (e CellTaken) ForstErrorTag() string {
 	return "main/CellTaken"
 }
-func G_cADKLRyByvZ(g GameState) bool {
+
+func G_CkDVLU3nSxq(g GameState) bool {
 	if len(g.Cells) < 9 {
 		return false
 	}
@@ -98,13 +113,16 @@ func G_cADKLRyByvZ(g GameState) bool {
 	}
 	return true
 }
+
 func NewGame() GameState {
 	board := emptyBoard()
 	return GameState{Cells: board, NextPlayer: "X", Status: "playing"}
 }
+
 func PlayMove(req MoveRequest) (MoveResponse, error) {
 	return ApplyMove(req)
 }
+
 func boardFull(cells []string) bool {
 	for i := 0; i < 9; i++ {
 		if cells[i] == "" {
@@ -113,23 +131,29 @@ func boardFull(cells []string) bool {
 	}
 	return true
 }
+
 func cellIndex(row int, col int) int {
 	return row*3 + col
 }
+
 func cloneCells(cells []string) []string {
 	out := emptyBoard()
 	copy(out, cells)
 	return out
 }
+
 func emptyBoard() []string {
 	return []string{"", "", "", "", "", "", "", "", ""}
 }
+
 func getCell(cells []string, idx int) string {
 	return cells[idx]
 }
+
 func invalidMove(msg string) error {
 	return errors.New(msg)
 }
+
 func lineWinner(cells []string, a int, b int, c int) string {
 	x0 := cells[a]
 	if x0 == "" {
@@ -140,6 +164,7 @@ func lineWinner(cells []string, a int, b int, c int) string {
 	}
 	return ""
 }
+
 func main() {
 	fmt.Println("=== tic-tac-toe merged-package example ===")
 	g := NewGame()
@@ -154,24 +179,28 @@ func main() {
 		fmt.Println("then    | next:", move.State.NextPlayer, "| status:", move.State.Status)
 	}
 }
+
 func opponent(p string) string {
 	if p == "X" {
 		return "O"
 	}
 	return "X"
 }
+
 func setCell(cells []string, idx int, val string) []string {
 	out := emptyBoard()
 	copy(out, cells)
 	out[idx] = val
 	return out
 }
+
 func terminalStatusForWinner(w string) string {
 	if w == "X" {
 		return "x_won"
 	}
 	return "o_won"
 }
+
 func winnerOrEmpty(cells []string) string {
 	lineA := []int{0, 3, 6, 0, 1, 2, 0, 2}
 	lineB := []int{1, 4, 7, 3, 4, 5, 4, 4}

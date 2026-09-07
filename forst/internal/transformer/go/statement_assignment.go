@@ -163,9 +163,6 @@ func (t *Transformer) transformFoldedResultAssignment(s ast.AssignmentNode, vn a
 		return nil, fmt.Errorf("assignment: expected Result from RHS")
 	}
 	varName := string(vn.Ident.ID)
-	successNames := t.resultSuccessGoNames(ts[0].TypeParams[0], varName)
-	errName := varName + "Err"
-	errUsed := collectResultErrSlotUsed(t.currentFnBody, varName)
 	rhsExpr, err := t.transformExpression(rhs)
 	if err != nil {
 		return nil, err
@@ -173,6 +170,20 @@ func (t *Transformer) transformFoldedResultAssignment(s ast.AssignmentNode, vn a
 	if t.resultLocalSplit == nil {
 		t.resultLocalSplit = make(map[string]resultLocalSplit)
 	}
+
+	// Result(Void, F) lowers to a single error value; the Forst name is the error binding.
+	if len(ts[0].TypeParams) >= 1 && ts[0].TypeParams[0].Ident == ast.TypeVoid {
+		t.resultLocalSplit[varName] = resultLocalSplit{errGoName: varName}
+		return &goast.AssignStmt{
+			Lhs: []goast.Expr{goast.NewIdent(varName)},
+			Tok: assignOpForMultiValueLHS(s.IsShort, []goast.Expr{goast.NewIdent(varName)}),
+			Rhs: []goast.Expr{rhsExpr},
+		}, nil
+	}
+
+	successNames := t.resultSuccessGoNames(ts[0].TypeParams[0], varName)
+	errName := varName + "Err"
+	errUsed := collectResultErrSlotUsed(t.currentFnBody, varName)
 	split := resultLocalSplit{successGoNames: successNames}
 	if errUsed {
 		split.errGoName = errName

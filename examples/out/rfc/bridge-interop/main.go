@@ -1,7 +1,9 @@
 package main
 
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+)
 
 type T_S47SAU5d2zT struct {
 	id string

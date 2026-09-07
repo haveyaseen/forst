@@ -45,6 +45,11 @@ func (t *Transformer) transformEnsureStatement(ensureNode ast.EnsureNode, origin
 		return nil, fmt.Errorf("failed to restore ensure statement scope: %s", err)
 	}
 
+	ensureNode, err = t.specializeEnsureForEmit(ensureNode)
+	if err != nil {
+		return nil, err
+	}
+
 	stmts, err := t.transformEnsureCondition(&ensureNode)
 	if err != nil {
 		return nil, err
@@ -213,15 +218,21 @@ func (t *Transformer) transformErrorStatement(fn ast.FunctionNode, stmt ast.Ensu
 
 	// Build error return values based on the function's return types
 	// Result(S, Error) is one Forst return type but lowers to (S, error) in Go.
+	// Result(Void, Error) lowers to a single error return.
 	if len(returnTypes) == 1 && returnTypes[0].IsResultType() && len(returnTypes[0].TypeParams) >= 2 {
 		succT := returnTypes[0].TypeParams[0]
-		zeroSucc, err := t.zeroValueExprForASTType(succT)
-		if err != nil {
-			zeroSucc = t.buildZeroCompositeLiteral(&succT)
-		}
 		errExpr, err := t.ensureFailureErrorExpr(stmt)
 		if err != nil {
 			errExpr = t.defaultAssertionErrorExpr(stmt)
+		}
+		if succT.Ident == ast.TypeVoid {
+			return &goast.ReturnStmt{
+				Results: []goast.Expr{errExpr},
+			}
+		}
+		zeroSucc, err := t.zeroValueExprForASTType(succT)
+		if err != nil {
+			zeroSucc = t.buildZeroCompositeLiteral(&succT)
 		}
 		return &goast.ReturnStmt{
 			Results: []goast.Expr{zeroSucc, errExpr},

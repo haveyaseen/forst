@@ -3,7 +3,6 @@ package modulecheck
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"forst/internal/ast"
 	"forst/internal/goload"
@@ -134,9 +133,6 @@ func findForstFiles(root string) ([]string, error) {
 			return nil
 		}
 		if filepath.Ext(path) == ".ft" {
-			if strings.HasSuffix(path, ".skip.ft") {
-				return nil
-			}
 			out = append(out, path)
 		}
 		return nil

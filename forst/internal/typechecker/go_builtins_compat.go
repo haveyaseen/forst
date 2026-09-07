@@ -215,15 +215,16 @@ func (tc *TypeChecker) compatTypeDefAlias(actual, expected ast.TypeNode) bool {
 	if actualExists {
 		if typeDef, ok := actualDef.(ast.TypeDefNode); ok {
 			if typeDefExpr, ok := typeDefAssertionFromExpr(typeDef.Expr); ok {
-				if typeDefExpr.Assertion != nil && typeDefExpr.Assertion.BaseType != nil {
-					baseType := ast.TypeNode{Ident: *typeDefExpr.Assertion.BaseType}
-					if tc.IsTypeCompatible(baseType, expected) {
-						tc.debugCompat("Actual type is alias of expected type", logrus.Fields{
-							"actual":   actual.Ident,
-							"expected": expected.Ident,
-							"function": "IsTypeCompatible",
-						})
-						return true
+				if typeDefExpr.Assertion != nil {
+					if baseType, ok := typeDefExpr.Assertion.ToTypeNode(); ok {
+						if tc.IsTypeCompatible(baseType, expected) {
+							tc.debugCompat("Actual type is alias of expected type", logrus.Fields{
+								"actual":   actual.Ident,
+								"expected": expected.Ident,
+								"function": "IsTypeCompatible",
+							})
+							return true
+						}
 					}
 				}
 			}
@@ -233,15 +234,16 @@ func (tc *TypeChecker) compatTypeDefAlias(actual, expected ast.TypeNode) bool {
 	if expectedExists {
 		if typeDef, ok := expectedDef.(ast.TypeDefNode); ok {
 			if typeDefExpr, ok := typeDefAssertionFromExpr(typeDef.Expr); ok {
-				if typeDefExpr.Assertion != nil && typeDefExpr.Assertion.BaseType != nil {
-					baseType := ast.TypeNode{Ident: *typeDefExpr.Assertion.BaseType}
-					if tc.IsTypeCompatible(actual, baseType) {
-						tc.debugCompat("Expected type is alias of actual type", logrus.Fields{
-							"actual":   actual.Ident,
-							"expected": expected.Ident,
-							"function": "IsTypeCompatible",
-						})
-						return true
+				if typeDefExpr.Assertion != nil {
+					if baseType, ok := typeDefExpr.Assertion.ToTypeNode(); ok {
+						if tc.IsTypeCompatible(actual, baseType) {
+							tc.debugCompat("Expected type is alias of actual type", logrus.Fields{
+								"actual":   actual.Ident,
+								"expected": expected.Ident,
+								"function": "IsTypeCompatible",
+							})
+							return true
+						}
 					}
 				}
 			}

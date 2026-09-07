@@ -3,10 +3,12 @@ package main
 type ErrKind interface {
 	isErrKind()
 }
+
 // IoError: TypeDefErrorExpr({path: String})
 type IoError struct {
 	path string
 }
+
 // ParseError: TypeDefErrorExpr({code: Int})
 type ParseError struct {
 	code int
@@ -15,15 +17,19 @@ type ParseError struct {
 func (e IoError) Error() string {
 	return "error"
 }
+
 func (e ParseError) Error() string {
 	return "error"
 }
+
 func (e IoError) ForstErrorTag() string {
 	return "main/IoError"
 }
+
 func (e ParseError) ForstErrorTag() string {
 	return "main/ParseError"
 }
+
 func demo() {
 	x, xErr := mk()
 	if func() bool {
@@ -37,15 +43,20 @@ func demo() {
 		onlyParseError(xErr.(ParseError))
 	}
 }
+
 func (IoError) isErrKind() {
 }
+
 func (ParseError) isErrKind() {
 }
+
 func main() {
 	demo()
 }
+
 func mk() (int, error) {
 	return 0, nil
 }
+
 func onlyParseError(p ParseError) {
 }

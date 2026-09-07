@@ -11,6 +11,7 @@ func main() {
 		println(x)
 	}
 }
+
 func one() (int, error) {
 	n := 1
 	if n <= 0 {

@@ -7,6 +7,7 @@ func checkClosed(err error) {
 		return
 	}
 }
+
 func main() {
 	checkClosed(http.ErrServerClosed)
 }

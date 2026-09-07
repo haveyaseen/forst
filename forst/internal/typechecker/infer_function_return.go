@@ -228,7 +228,7 @@ func (tc *TypeChecker) applyEnsureReturnInference(fn ast.FunctionNode, parsedTyp
 	if !hasEnsure {
 		return inferredType, nil
 	}
-	if tc.IsGoTestFunction(fn) {
+	if tc.IsGoTestFunction(fn) || isMainFunctionNode(fn) {
 		return []ast.TypeNode{{Ident: ast.TypeVoid}}, nil
 	}
 	if len(inferredType) == 0 {
@@ -238,7 +238,11 @@ func (tc *TypeChecker) applyEnsureReturnInference(fn ast.FunctionNode, parsedTyp
 		if !tc.functionEnsureImpliesResultReturn(fn) {
 			return []ast.TypeNode{{Ident: ast.TypeVoid}}, nil
 		}
-		return []ast.TypeNode{{Ident: ast.TypeError}}, nil
+		// Void success + failure path → Result(Void, Error), not bare Error.
+		return []ast.TypeNode{ast.NewResultType(
+			ast.TypeNode{Ident: ast.TypeVoid},
+			ast.TypeNode{Ident: ast.TypeError},
+		)}, nil
 	}
 	if tc.functionEnsureImpliesResultReturn(fn) &&
 		(len(parsedType) != 1 || !parsedType[0].IsResultType()) &&

@@ -11,6 +11,7 @@ func getValue[T any](b struct {
 }) T {
 	return b.value
 }
+
 func main() {
 	println(strconv.Itoa(getValue(struct {
 		value int

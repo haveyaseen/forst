@@ -18,7 +18,7 @@ func ListTodos() {
 	}
 }
 
-func AddTodo(input AddTodoRequest): AddTodoResponse {
+func AddTodo(input AddTodoRequest): Result(AddTodoResponse, Error) {
 	println("api:AddTodo:" + input.title)
 	created := todos.addTodo(input.title)
 	ensure created is Ok()
@@ -29,7 +29,7 @@ func AddTodo(input AddTodoRequest): AddTodoResponse {
 	}
 }
 
-func CompleteTodo(input CompleteTodoRequest): CompleteTodoResponse {
+func CompleteTodo(input CompleteTodoRequest): Result(CompleteTodoResponse, Error) {
 	println("api:CompleteTodo:" + input.id)
 	updated := todos.toggleTodo(input.id)
 	ensure updated is Ok()

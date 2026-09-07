@@ -3,6 +3,7 @@ package auth
 type HashInput struct {
 	Password string `json:"password"`
 }
+
 // T_SS6D5Sxb9uV: TypeDefShapeExpr({hash: Value(Variable(input.password))})
 type T_SS6D5Sxb9uV struct {
 	Hash string `json:"hash"`

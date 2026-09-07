@@ -41,7 +41,7 @@ func TestAsync_forInOverAsyncIteratorWithBlockingDispatch(t *testing.T) {
 	src := `package main
 import "./legacy/events" js
 
-func drain(userId String): Void {
+func drain(userId String): Result(Void, Error) {
 	seq := events.subscribe(userId)
 	ensure seq is Ok()
 	for _, evt := range seq {

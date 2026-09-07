@@ -10,8 +10,7 @@
     "include": ["**/*.ft", "**/*.ts"],
     "exclude": [
       "**/node_modules/**",
-      "**/.git/**",
-      "**/*.skip.ft"
+      "**/.git/**"
     ],
     "maxDepth": 10
   },

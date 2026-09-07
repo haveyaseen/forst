@@ -3,6 +3,7 @@ package main
 type Inner struct {
 	Value int
 }
+
 // Outer: TypeDefShapeExpr({Inner: Inner})
 type Outer struct {
 	Inner

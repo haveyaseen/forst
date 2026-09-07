@@ -1,8 +1,11 @@
 package main
 
-import errors "errors"
-import fmt "fmt"
-import os "os"
+import (
+	errors "errors"
+	fmt "fmt"
+	os "os"
+)
+
 // T_H4c2uQ34ZJV: TypeDefShapeExpr({})
 type T_H4c2uQ34ZJV struct {
 }
@@ -17,6 +20,7 @@ func main() {
 	}
 	println(x)
 }
+
 func okInt() (int, error) {
 	n := 42
 	if n <= 0 {

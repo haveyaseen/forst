@@ -1,8 +1,10 @@
 package main
 
-import "strconv"
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+	"strconv"
+)
 
 func main() {
 	var syncSum float64 = 0

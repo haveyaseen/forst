@@ -189,7 +189,7 @@ Only **exported** functions (capitalized names) appear in the client. Provider g
 }
 ```
 
-Globs resolve from the **ftconfig boundary root**, not from the shell cwd alone. `files.include` selects which `.ft` files enter generate and dev. It does **not** override Go package layout. Each directory holds one Forst package name. Broad includes like `**/*.ft` at a monorepo-root boundary pull every nested package under that boundary. Prefer placing the boundary at the app that owns the `.ft` tree.
+Globs resolve from the **ftconfig boundary root**, not from the shell cwd alone. `files.include` selects which `.ft` files enter generate and dev. Use `files.exclude` to ignore draft or unfinished sources (there is no special `.skip.ft` suffix). It does **not** override Go package layout. Each directory holds one Forst package name. Broad includes like `**/*.ft` at a monorepo-root boundary pull every nested package under that boundary. Prefer placing the boundary at the app that owns the `.ft` tree.
 
 Pass **`-config`** explicitly or let the CLI search upward from your target directory.
 

@@ -2,17 +2,33 @@ package ast
 
 import "fmt"
 
+// EnsureImplicitKind records ensure sugar that is specialized after the subject type is known.
+type EnsureImplicitKind uint8
+
+const (
+	// EnsureImplicitNone means the assertion was written explicitly (`ensure x is …`).
+	EnsureImplicitNone EnsureImplicitKind = iota
+	// EnsureImplicitBare is `ensure x` with no `is` (Bool→True, Result→Ok).
+	EnsureImplicitBare
+	// EnsureImplicitBang is `ensure !x` (Bool→False, Error/nilable→Nil, Result(Void)→Ok).
+	EnsureImplicitBang
+)
+
 // EnsureNode represents an ensure statement in the AST.
 // Typed failure is Error (from `else`); FailureBlock is Block (from `{ … }`).
 // Error and Block are mutually exclusive (XOR).
 type EnsureNode struct {
 	Variable VariableNode
 	// Target is the RHS of `is`: TypeTarget (bare type name) or AssertionTarget
-	// (constraint chain(s), possibly Join via `or`). Nil for `ensure !err` sugar.
+	// (constraint chain(s), possibly Join via `or`). Nil for ImplicitBare / ImplicitBang
+	// until the typechecker specializes the sugar.
 	Target RefinementTarget
 	// Assertion is the primary assertion view for AssertionTarget (first Meet chain,
 	// with OrChains for Join). For TypeTarget it holds BaseType only (compat).
+	// Empty when Implicit is Bare or Bang until specialized.
 	Assertion AssertionNode
+	// Implicit records bare / bang sugar that must be specialized from the subject type.
+	Implicit EnsureImplicitKind
 	/// Is optional if we're in the main function of the main package
 	Error *EnsureErrorNode
 	// Block is the failure block (alias FailureBlock); runs when the assertion fails.
@@ -82,12 +98,36 @@ func (e EnsureErrorVar) String() string {
 	return string(e)
 }
 
+// EnsureErrorExpr is a general ensure-else failure expression (method call, etc.).
+type EnsureErrorExpr struct {
+	Expr ExpressionNode
+}
+
+func (e EnsureErrorExpr) String() string {
+	if e.Expr == nil {
+		return "EnsureErrorExpr"
+	}
+	return e.Expr.String()
+}
+
 // Kind returns the node kind for an ensure statement
 func (e EnsureNode) Kind() NodeKind {
 	return NodeKindEnsure
 }
 
 func (e EnsureNode) String() string {
+	if e.Implicit == EnsureImplicitBang {
+		if e.Error == nil {
+			return fmt.Sprintf("Ensure(!%s)", e.Variable)
+		}
+		return fmt.Sprintf("Ensure(!%s, %s)", e.Variable, (*e.Error).String())
+	}
+	if e.Implicit == EnsureImplicitBare {
+		if e.Error == nil {
+			return fmt.Sprintf("Ensure(%s)", e.Variable)
+		}
+		return fmt.Sprintf("Ensure(%s, %s)", e.Variable, (*e.Error).String())
+	}
 	target := e.Assertion.String()
 	if e.Target != nil {
 		target = e.Target.String()
@@ -106,4 +146,14 @@ func (e EnsureBlockNode) String() string {
 // Kind returns the node kind for an ensure block
 func (e EnsureBlockNode) Kind() NodeKind {
 	return NodeKindEnsureBlock
+}
+
+// ConstraintOnlyAssertion builds a bare constraint assertion (True/False/Ok/Nil/…).
+func ConstraintOnlyAssertion(name string) AssertionNode {
+	return AssertionNode{
+		Constraints: []ConstraintNode{{
+			Name: name,
+			Args: []ConstraintArgumentNode{},
+		}},
+	}
 }

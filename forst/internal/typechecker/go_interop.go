@@ -445,6 +445,21 @@ func (tc *TypeChecker) typeDefFromSamePackageGoType(tn *types.TypeName) (ast.Typ
 				Assertion: &ast.AssertionNode{BaseType: &base},
 			},
 		}, true
+	case *types.Slice:
+		elem, ok := tc.mapGoType(u.Elem())
+		if !ok || elem.Ident == ast.TypeImplicit {
+			return ast.TypeDefNode{}, false
+		}
+		base := ast.TypeArray
+		return ast.TypeDefNode{
+			Ident: ident,
+			Expr: ast.TypeDefAssertionExpr{
+				Assertion: &ast.AssertionNode{
+					BaseType:   &base,
+					TypeParams: []ast.TypeNode{elem},
+				},
+			},
+		}, true
 	default:
 		return ast.TypeDefNode{}, false
 	}

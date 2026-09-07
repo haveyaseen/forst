@@ -172,11 +172,14 @@ func (t *Transformer) transformTypes(types []ast.TypeNode) (*goast.FieldList, er
 			if len(typ.TypeParams) != 2 {
 				return nil, fmt.Errorf("result must have exactly two type parameters")
 			}
-			s, err := t.transformType(typ.TypeParams[0])
-			if err != nil {
-				return nil, fmt.Errorf("failed to transform Result success type: %w", err)
+			// Result(Void, F) lowers to a single error return (idiomatic Go).
+			if typ.TypeParams[0].Ident != ast.TypeVoid {
+				s, err := t.transformType(typ.TypeParams[0])
+				if err != nil {
+					return nil, fmt.Errorf("failed to transform Result success type: %w", err)
+				}
+				fields = append(fields, &goast.Field{Type: s})
 			}
-			fields = append(fields, &goast.Field{Type: s})
 			fields = append(fields, &goast.Field{Type: goast.NewIdent("error")})
 			continue
 		}

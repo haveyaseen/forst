@@ -6,6 +6,7 @@ func early(ok bool) {
 	}
 	println("ok")
 }
+
 func main() {
 	early(false)
 	early(true)

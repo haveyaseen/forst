@@ -50,8 +50,7 @@
       "**/node_modules/**",
       "**/.git/**",
       "**/.forst/**",
-      "**/generated/**",
-      "**/*.skip.ft"
+      "**/generated/**"
     ],
     "maxDepth": 10
   }

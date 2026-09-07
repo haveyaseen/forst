@@ -83,14 +83,16 @@ func create(): Result(Payload, Error) {
 	return Payload{id: "x"}
 }
 
-func checkout(): String {
+func checkout() {
 	result := create()
 	ensure result is Ok()
 	return result.id
 }
 
 func main() {
-	println(checkout())
+	s := checkout()
+	ensure s is Ok()
+	println(s)
 }
 `
 	out := compileForstPipelineExt(t, src, pipelineOpts{goWorkspaceDir: moduleRootFromWD(t)})

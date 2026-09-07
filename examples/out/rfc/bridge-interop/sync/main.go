@@ -1,7 +1,9 @@
 package main
 
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+)
 
 type T_BSiWS9EsB18 struct {
 	Amount   float64 `json:"amount"`

@@ -7,7 +7,7 @@ import (
 )
 
 // ForstFilesInDir lists production .ft files in a single package directory.
-// Skips *_test.ft and *.skip.ft. Does not walk subdirectories.
+// Skips *_test.ft. Does not walk subdirectories.
 func ForstFilesInDir(dir string) ([]string, error) {
 	if dir == "" {
 		return nil, nil
@@ -26,9 +26,6 @@ func ForstFilesInDir(dir string) ([]string, error) {
 		}
 		name := e.Name()
 		if !strings.HasSuffix(name, ".ft") {
-			continue
-		}
-		if strings.HasSuffix(name, ".skip.ft") {
 			continue
 		}
 		if strings.HasSuffix(name, "_test.ft") {

@@ -471,6 +471,18 @@ tasks:
     cmds:
       - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/ensure_true.ft
 
+  example:ensure-bool:
+    desc: Compile ensure_bool example (bare ensure Bool True/False sugar)
+    dir: forst
+    cmds:
+      - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/ensure_bool.ft
+
+  example:ensure-else-method:
+    desc: Compile ensure_else_method example (else method call + concat-in-shape)
+    dir: forst
+    cmds:
+      - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/ensure_else_method.ft
+
   example:nested-slices:
     desc: Compile nested_slices example (Go-style [][]T composites)
     dir: forst
@@ -578,6 +590,30 @@ tasks:
     dir: forst
     cmds:
       - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/result_ensure.ft
+
+  example:result-void-ensure:
+    desc: Compile Result(Void) + ensure Ok() example
+    dir: forst
+    cmds:
+      - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/result_void_ensure.ft
+
+  example:result-unwrap-propagate:
+    desc: Compile ensure Ok() unwrap propagate example
+    dir: forst
+    cmds:
+      - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/result_unwrap_propagate.ft
+
+  example:mutual-recursion:
+    desc: Compile mutual recursion String methods example
+    dir: forst
+    cmds:
+      - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/mutual_recursion.ft
+
+  example:slice-alias-methods:
+    desc: Compile named slice alias + append mutual methods example
+    dir: forst
+    cmds:
+      - go run ./{{.BUILD_DIR}} run -loglevel trace -report-phases -- {{.EXAMPLES_DIR}}/slice_alias_methods.ft
 
   example:result-if:
     desc: Compile Result + if x is Ok() example (golden examples/out/result_if/)

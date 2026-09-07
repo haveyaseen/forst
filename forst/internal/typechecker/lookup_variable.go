@@ -101,7 +101,7 @@ func (tc *TypeChecker) lookupVariableForExpression(variable *ast.VariableNode, s
 
 	// Prefer go/types field resolution when this local was bound from a Go call (variableGoTypes):
 	// e.g. *enmime.Envelope maps to Pointer((implicit)) in Forst, but Attachments is a real slice type.
-	if goBase, ok := tc.variableGoTypes[baseIdent]; ok && goBase != nil {
+	if goBase := tc.goTypeForVariableIdent(baseIdent); goBase != nil {
 		if t, err := tc.lookupFieldPathFromGoType(goBase, parts[1:]); err == nil {
 			return t, nil, "", nil
 		}

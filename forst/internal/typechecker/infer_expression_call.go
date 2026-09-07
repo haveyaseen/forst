@@ -301,8 +301,8 @@ func (tc *TypeChecker) inferTwoPartGoImportNotLoadedError(e ast.FunctionCallNode
 
 func (tc *TypeChecker) inferMultiPartGoMethodCall(e ast.FunctionCallNode, parts []string, argTypes [][]ast.TypeNode) ([]ast.TypeNode, bool, error) {
 	base := ast.Identifier(parts[0])
-	gt, ok := tc.variableGoTypes[base]
-	if !ok || gt == nil {
+	gt := tc.goTypeForVariableIdent(base)
+	if gt == nil {
 		return tc.inferUnqualifiedBuiltinOrDotImportCall(e, argTypes)
 	}
 	fieldPath := parts[1 : len(parts)-1]

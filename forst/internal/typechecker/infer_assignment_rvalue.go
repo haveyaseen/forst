@@ -58,7 +58,7 @@ func (tc *TypeChecker) tryResolveNValueGoCall(assign ast.AssignmentNode, fc ast.
 }
 
 func (tc *TypeChecker) tryLocalVariableNValueMethodCall(assign ast.AssignmentNode, fc ast.FunctionCallNode, recvName, methodName string) ([][]ast.TypeNode, bool, error) {
-	goRecv := tc.variableGoTypes[ast.Identifier(recvName)]
+	goRecv := tc.goTypeForVariableIdent(ast.Identifier(recvName))
 	if goRecv == nil {
 		return nil, false, nil
 	}

@@ -98,8 +98,8 @@ func (tc *TypeChecker) inferResultMethodCallType(t ast.TypeNode, methodName stri
 }
 
 func (tc *TypeChecker) inferGoVariableMethodCallType(receiver ast.Identifier, methodName string, e ast.FunctionCallNode, argTypes [][]ast.TypeNode) ([]ast.TypeNode, bool, error) {
-	goRecv, ok := tc.variableGoTypes[receiver]
-	if !ok || goRecv == nil {
+	goRecv := tc.goTypeForVariableIdent(receiver)
+	if goRecv == nil {
 		return nil, false, nil
 	}
 	method := e.Function

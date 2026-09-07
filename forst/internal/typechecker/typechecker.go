@@ -94,7 +94,13 @@ type TypeChecker struct {
 	shapeExpectations map[ast.TypeIdent]ast.ShapeNode
 	// variableGoTypes maps locals assigned from Go qualified calls to the corresponding go/types result types.
 	// Used to type-check method calls against real Go method signatures instead of opaque TYPE_IMPLICIT.
+	// Ident-keyed only; last writer wins. Prefer variableGoTypesBySymbol / ByOccurrence for scoped lookup
+	// so Test*(t *testing.T) does not steal the name t from other functions.
 	variableGoTypes map[ast.Identifier]types.Type
+	// variableGoTypesBySymbol maps a scope SymbolID to its Go FFI type (unique across shadowing).
+	variableGoTypesBySymbol map[SymbolID]types.Type
+	// variableGoTypesByOccurrence maps a source occurrence (ident+span) to its Go FFI type.
+	variableGoTypesByOccurrence map[variableOccurrenceKey]types.Type
 	// TypeMethods maps receiver type ident -> method name -> signature (Forst receiver methods).
 	TypeMethods map[ast.TypeIdent]map[string]FunctionSignature
 	// goQualifiedTypeAliases maps Forst type ident -> Go qualified type name (e.g. io.Writer).
@@ -191,6 +197,8 @@ func New(log *logrus.Logger, reportPhases bool) *TypeChecker {
 		compoundNarrowingByIdentifier:               make(map[ast.Identifier]compoundNarrowingInfo),
 		FunctionReturnTypes:                         make(map[ast.Identifier][]ast.TypeNode),
 		variableGoTypes:                             make(map[ast.Identifier]types.Type),
+		variableGoTypesBySymbol:                     make(map[SymbolID]types.Type),
+		variableGoTypesByOccurrence:                 make(map[variableOccurrenceKey]types.Type),
 		log:                                         log,
 		reportPhases:                                reportPhases,
 		scopeOwners:                                 newScopeOwners(),

@@ -75,7 +75,7 @@ func (tc *TypeChecker) inferFunctionNode(node ast.Node) ([]ast.TypeNode, error) 
 				typedParam.Ident.ID,
 				[]ast.TypeNode{paramType},
 				SymbolVariable)
-			tc.bindVariableGoTypeFromParamType(typedParam.Ident.ID, paramType)
+			tc.bindVariableGoTypeFromParamType(typedParam.Ident, paramType)
 		case ast.DestructuredParamNode:
 			paramType := typedParam.Type
 			if hasFreeFnSig && i < len(freeFnSig.Parameters) {

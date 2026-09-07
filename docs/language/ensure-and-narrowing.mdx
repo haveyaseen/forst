@@ -121,7 +121,6 @@ checks. `else` stays optional in every case.
 | `Bool` | `ensure b` | `ensure b is True()` |
 | `Bool` | `ensure !b` | `ensure b is False()` |
 | `Result(S, F)` | `ensure x` / `ensure f()` | `ensure … is Ok()` |
-| `Result(Void, F)` | `ensure !x` | success as “no error” (same as `is Ok()`) |
 | `*T`, `Map`, `Array` | `ensure x` | `ensure x is Present()` (non-nil) |
 | `Error` / nilable | `ensure !err` | `ensure err is Nil()` |
 
@@ -136,8 +135,8 @@ Other types still need an explicit `is` constraint. Bare `ensure err` on an
 `map` or `[]` still passes `Present`. Use `is NotEmpty()` or `is Min(n)` for
 length.
 
-Do not write `ensure !x` on a `Result` that carries a success value. That form
-is ambiguous. Use `ensure x is Ok()` or `ensure x is Err()` instead.
+Do not write `ensure !x` on a `Result`. Use `ensure x`, `ensure x is Ok()`, or
+`ensure x is Err()` instead. Bang is for Bool false and Error/nilable absence.
 
 Do not mix `!` with `is`. Write `ensure x is …` or bare `ensure !x`.
 `ensure !x is …` is a syntax error.

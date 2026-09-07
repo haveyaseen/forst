@@ -36,18 +36,22 @@ func (tc *TypeChecker) SpecializeEnsureSugar(ensure ast.EnsureNode, subjectType 
 		case base.Ident == ast.TypeBool:
 			name = "False"
 		case base.IsResultType():
-			if len(base.TypeParams) >= 1 && base.TypeParams[0].Ident == ast.TypeVoid {
-				name = "Ok"
-			} else {
-				return ensure, reportBodyf(ensure.EnsureSubjectSpan(), "ensure-bang-result",
-					"ensure ! on Result(%s, …) is ambiguous — write `ensure %s is Ok()` or `ensure %s is Err()`",
-					formatTypeNodeForDiag(base.TypeParams[0]), ensure.Variable.Ident.ID, ensure.Variable.Ident.ID)
+			subj := string(ensure.Variable.Ident.ID)
+			if subj == "" {
+				subj = "x"
 			}
+			succ := "…"
+			if len(base.TypeParams) >= 1 {
+				succ = formatTypeNodeForDiag(base.TypeParams[0])
+			}
+			return ensure, reportBodyf(ensure.EnsureSubjectSpan(), "ensure-bang-result",
+				"ensure ! on Result(%s, …) is not allowed — write `ensure %s` or `ensure %s is Ok()` (or `is Err()` for the failure path)",
+				succ, subj, subj)
 		case isNilableType(tc, subjectType):
 			name = "Nil"
 		default:
 			return ensure, reportBodyf(ensure.EnsureSubjectSpan(), "ensure-bang-subject",
-				"ensure ! needs a Bool, Error/nilable, or Result(Void, …) subject (got %s)",
+				"ensure ! needs a Bool or Error/nilable subject (got %s)",
 				formatTypeNodeForDiag(subjectType))
 		}
 	default:

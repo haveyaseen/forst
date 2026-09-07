@@ -79,15 +79,6 @@ func (tc *TypeChecker) inferEnsureType(ensure ast.EnsureNode) (ast.TypeNode, err
 		return ast.TypeNode{}, err
 	}
 
-	// Result(Void) may use Nil() as Error-shaped sugar (same as ensure !err → Ok).
-	if ensureIsOnlyNilConstraint(ensure) && variableType.IsResultType() &&
-		len(variableType.TypeParams) >= 1 && variableType.TypeParams[0].Ident == ast.TypeVoid {
-		okAssert := ast.ConstraintOnlyAssertion("Ok")
-		ensure.Assertion = okAssert
-		ensure.Target = ast.AssertionTarget{Chains: []ast.AssertionNode{okAssert}}
-		tc.recordEnsureIR(ensure)
-	}
-
 	if err := tc.validateAssertionNode(ensure.Assertion, variableType, subjSpan); err != nil {
 		return ast.TypeNode{}, err
 	}
@@ -108,12 +99,4 @@ func (tc *TypeChecker) inferEnsureType(ensure ast.EnsureNode) (ast.TypeNode, err
 	// Assertion hover type is stored in infer.go after successor narrowing so `tc.Types` matches the
 	// same inference order as `if x is <assertion>` (see applyEnsureSuccessorNarrowing).
 	return variableType, nil
-}
-
-func ensureIsOnlyNilConstraint(n ast.EnsureNode) bool {
-	if len(n.Assertion.Constraints) != 1 {
-		return false
-	}
-	c := n.Assertion.Constraints[0]
-	return c.Name == "Nil" && len(c.Args) == 0
 }

@@ -179,6 +179,15 @@ func (tc *TypeChecker) validateAssertionNode(assertionNode ast.AssertionNode, va
 			if !isPresentableNilable(tc, varLeftType) {
 				return fmt.Errorf("present assertion requires a pointer, map, or array type, got %s", formatTypeIdentForDiag(varLeftType.Ident))
 			}
+		} else if constraint.Name == "Nil" {
+			if varLeftType.IsResultType() {
+				return reportBodyf(span, "ensure-nil-result",
+					"Nil() is for Error and other nilables — write `ensure` / `is Ok()` on a Result (got %s)",
+					formatTypeNodeForDiag(varLeftType))
+			}
+			if !isNilableType(tc, varLeftType) {
+				return fmt.Errorf("nil assertion requires a pointer, map, array, or Error type, got %s", formatTypeIdentForDiag(varLeftType.Ident))
+			}
 		} else {
 			// Check type guard subject type for other constraints
 			if guardDef, exists := tc.Defs[ast.TypeIdent(constraint.Name)]; exists {

@@ -231,8 +231,7 @@ func (p *P) badConcat(ok Bool, kw String) {
 
 func Run(ok Bool) {
 	p := &P{n: 0}
-	err := p.badMethod(ok)
-	ensure !err
+	ensure p.badMethod(ok)
 	return 1
 }
 
@@ -257,8 +256,8 @@ func need(ok Bool) {
 }
 
 func Run(ok Bool) {
-	err := need(ok)
-	ensure err
+	result := need(ok)
+	ensure result
 	return 1
 }
 
@@ -299,6 +298,65 @@ func main() {}
 	}
 	if !strings.Contains(msg, "is Ok()") || !strings.Contains(msg, "is Err()") {
 		t.Fatalf("expected is Ok() / is Err() rewrite, got: %v", err)
+	}
+}
+
+func TestCheckTypes_bangEnsure_voidResult_errors(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func f(x Result(Void, Error)) {
+	ensure !x
+}
+
+func main() {}
+`
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+	toks := lexer.New([]byte(src), "t.ft", log).Lex()
+	nodes, err := parser.New(toks, "t.ft", log).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	tc := New(log, false)
+	err = tc.CheckTypes(nodes)
+	if err == nil {
+		t.Fatal("expected ensure-bang-result for ensure !x on Result(Void, Error)")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "ensure-bang-result") {
+		t.Fatalf("expected ensure-bang-result, got: %v", err)
+	}
+	if !strings.Contains(msg, "ensure x") {
+		t.Fatalf("expected bare ensure x suggestion, got: %v", err)
+	}
+}
+
+func TestCheckTypes_ensureNil_onVoidResult_errors(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func f(x Result(Void, Error)) {
+	ensure x is Nil()
+}
+
+func main() {}
+`
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+	toks := lexer.New([]byte(src), "t.ft", log).Lex()
+	nodes, err := parser.New(toks, "t.ft", log).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	tc := New(log, false)
+	err = tc.CheckTypes(nodes)
+	if err == nil {
+		t.Fatal("expected error for ensure x is Nil() on Result(Void, Error)")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "ensure-nil-result") && !strings.Contains(msg, "Nil()") {
+		t.Fatalf("expected Nil-on-Result diagnostic, got: %v", err)
 	}
 }
 

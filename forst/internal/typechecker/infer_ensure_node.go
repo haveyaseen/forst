@@ -25,12 +25,6 @@ func (tc *TypeChecker) inferEnsureNode(node ast.Node) ([]ast.TypeNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ensureIsOnlyNilConstraint(ensureNode) && variableType.IsResultType() &&
-		len(variableType.TypeParams) >= 1 && variableType.TypeParams[0].Ident == ast.TypeVoid {
-		okAssert := ast.ConstraintOnlyAssertion("Ok")
-		ensureNode.Assertion = okAssert
-		ensureNode.Target = ast.AssertionTarget{Chains: []ast.AssertionNode{okAssert}}
-	}
 
 	if ensureNode.Block != nil {
 		tc.pushScope(ensureNode.Block)

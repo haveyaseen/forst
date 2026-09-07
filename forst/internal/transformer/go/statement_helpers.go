@@ -102,7 +102,7 @@ func (t *Transformer) ensureFailureErrorExpr(stmt ast.EnsureNode) (goast.Expr, e
 }
 
 // ensurePropagatedFailureExpr returns the subject's error value for bare propagate sugar:
-// `ensure !err`, `ensure err is Nil()`, and `ensure x is Ok()` on a Result.
+// `ensure !err` / `ensure err is Nil()` on Error, and `ensure x is Ok()` on a Result.
 func (t *Transformer) ensurePropagatedFailureExpr(stmt ast.EnsureNode) (goast.Expr, bool) {
 	if stmt.Error != nil {
 		return nil, false
@@ -133,15 +133,6 @@ func (t *Transformer) ensurePropagatedFailureExpr(stmt ast.EnsureNode) (goast.Ex
 
 	if !ensureIsOnlyNilAssertion(stmt) {
 		return nil, false
-	}
-	if variableType.IsResultType() && len(variableType.TypeParams) >= 1 &&
-		variableType.TypeParams[0].Ident == ast.TypeVoid {
-		if t.resultLocalSplit != nil {
-			if split, ok := t.resultLocalSplit[string(stmt.Variable.Ident.ID)]; ok && split.errGoName != "" {
-				return goast.NewIdent(split.errGoName), true
-			}
-		}
-		return goast.NewIdent(string(stmt.Variable.Ident.ID)), true
 	}
 	if !t.TypeChecker.IsTypeCompatible(variableType, ast.TypeNode{Ident: ast.TypeError}) {
 		return nil, false
@@ -195,12 +186,6 @@ func (t *Transformer) specializeEnsureForEmit(ensure ast.EnsureNode) (ast.Ensure
 	}
 
 	if ensure.Implicit == ast.EnsureImplicitNone && len(ensure.Assertion.Constraints) > 0 {
-		if ensureIsOnlyNilAssertion(ensure) && variableType.IsResultType() &&
-			len(variableType.TypeParams) >= 1 && variableType.TypeParams[0].Ident == ast.TypeVoid {
-			okAssert := ast.ConstraintOnlyAssertion("Ok")
-			ensure.Assertion = okAssert
-			ensure.Target = ast.AssertionTarget{Chains: []ast.AssertionNode{okAssert}}
-		}
 		return ensure, nil
 	}
 	if ensure.Implicit == ast.EnsureImplicitNone {

@@ -10,7 +10,8 @@ const (
 	EnsureImplicitNone EnsureImplicitKind = iota
 	// EnsureImplicitBare is `ensure x` with no `is` (Bool→True, Result→Ok).
 	EnsureImplicitBare
-	// EnsureImplicitBang is `ensure !x` (Bool→False, Error/nilable→Nil, Result(Void)→Ok).
+	// EnsureImplicitBang is `ensure !x` (Bool→False, Error/nilable→Nil).
+	// Result subjects are rejected during sugar specialization.
 	EnsureImplicitBang
 )
 

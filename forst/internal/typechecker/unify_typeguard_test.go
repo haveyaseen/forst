@@ -53,6 +53,24 @@ func main() {
 	}
 }
 
+func TestUnifyTypeguard_nilRejectsResult(t *testing.T) {
+	src := `package main
+
+func f(x Result(Void, Error)) {
+	ensure x is Nil()
+}
+
+func main() {}
+`
+	_, _, err := Typecheck(t, src, testutil.TypecheckOpts{})
+	if err == nil {
+		t.Fatal("expected error for Nil on Result")
+	}
+	if !strings.Contains(err.Error(), "ensure-nil-result") && !strings.Contains(err.Error(), "Nil()") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestUnifyTypeguard_presentAllowsMap(t *testing.T) {
 	src := `package main
 

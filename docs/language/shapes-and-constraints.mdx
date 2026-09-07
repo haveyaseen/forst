@@ -79,7 +79,9 @@ Constraints **chain with dots** on the base type. All chained rules must pass:
 | | `.Finite()` | Not `NaN` or ±Inf |
 | **`Array(T)`** | `.Min(n)`, `.Max(n)` | **Element count** bounds |
 | | `.NotEmpty()` | At least one element |
+| | `.Nil()`, `.Present()` | Slice **nilness** (not emptiness) |
 | **`Map(K, V)`** | `.Min(n)`, `.Max(n)`, `.NotEmpty()` | **Key count** bounds |
+| | `.Nil()`, `.Present()` | Map **nilness** (not emptiness) |
 | **`Bytes`** | `.Min(n)`, `.Max(n)`, `.NotEmpty()` | Slice **byte** length |
 | **`Bool`** | `.True()`, `.False()` | Must be `true` or `false` |
 | **`*T` (pointers)** | `.Nil()`, `.Present()` | Optional vs required fields |

@@ -507,12 +507,22 @@ func (w *hashWalk) hashUncached(node ast.Node) (NodeHash, error) {
 		// Subject variable must participate in the hash; otherwise distinct ensures
 		// with the same assertion (e.g. `ensure a.name is Min(1)` vs `ensure b.name is Min(1)`)
 		// collide in scopeStack.scopes and restoreScope picks the wrong Ensure scope.
-		vh, err := w.hash(n.Variable)
-		if err != nil {
-			return 0, err
-		}
-		if err := w.h.writeHashes(hasher, vh); err != nil {
-			return 0, err
+		if n.Subject != nil {
+			sh, err := w.hash(n.Subject)
+			if err != nil {
+				return 0, err
+			}
+			if err := w.h.writeHashes(hasher, sh); err != nil {
+				return 0, err
+			}
+		} else {
+			vh, err := w.hash(n.Variable)
+			if err != nil {
+				return 0, err
+			}
+			if err := w.h.writeHashes(hasher, vh); err != nil {
+				return 0, err
+			}
 		}
 		if err := w.h.writeHashes(hasher, uint8(n.Implicit)); err != nil {
 			return 0, err

@@ -204,8 +204,8 @@ func check(flag Bool): Result(String, Error) {
 	if !strings.Contains(msg, "True()") {
 		t.Fatalf("expected True() suggestion, got: %v", err)
 	}
-	if !strings.Contains(msg, "boolean literal") {
-		t.Fatalf("expected boolean literal diagnostic, got: %v", err)
+	if !strings.Contains(msg, "ensure-boolean-literal") && !strings.Contains(msg, "must be a constraint") {
+		t.Fatalf("expected boolean-literal diagnostic, got: %v", err)
 	}
 }
 
@@ -280,28 +280,114 @@ func main() {
 	}
 }
 
-func TestParseEnsure_callSubjectRejected(t *testing.T) {
+func TestParseEnsure_callSubjectAllowed(t *testing.T) {
 	t.Parallel()
 	src := `package main
 
 error Fail { msg: String }
 
-func TransitionAllowed(from String, to String): Bool {
-	return true
+func need(ok Bool) {
+	ensure ok is True() else Fail("no")
 }
 
-func check(from String, to String): Result(Bool, Error) {
-	ensure TransitionAllowed(from, to) is True() else Fail("no")
-	return true
+func check(ok Bool) {
+	ensure need(ok)
+	return 1
+}
+`
+	nodes, err := NewTestParser(src, ast.SetupTestLogger(nil)).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := findFunction(t, nodes, "check")
+	ens, ok := fn.Body[0].(ast.EnsureNode)
+	if !ok {
+		t.Fatalf("want EnsureNode, got %T", fn.Body[0])
+	}
+	if !ens.IsCallSubject() {
+		t.Fatal("expected call subject on ensure need(ok)")
+	}
+	call, ok := ens.Subject.(ast.FunctionCallNode)
+	if !ok {
+		t.Fatalf("want FunctionCallNode subject, got %T", ens.Subject)
+	}
+	if call.Function.ID != "need" {
+		t.Fatalf("callee = %s, want need", call.Function.ID)
+	}
+	if ens.Implicit != ast.EnsureImplicitBare {
+		t.Fatalf("Implicit = %v, want Bare", ens.Implicit)
+	}
+}
+
+func TestParseEnsure_methodCallSubjectAllowed(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+type S = {}
+
+func (s S) ping() {}
+
+func check(s S) {
+	ensure s.ping()
+}
+`
+	nodes, err := NewTestParser(src, ast.SetupTestLogger(nil)).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := findFunction(t, nodes, "check")
+	ens := fn.Body[0].(ast.EnsureNode)
+	mc, ok := ens.Subject.(ast.MethodCallNode)
+	if !ok {
+		t.Fatalf("want MethodCallNode, got %T", ens.Subject)
+	}
+	if mc.Method.ID != "ping" {
+		t.Fatalf("method = %s, want ping", mc.Method.ID)
+	}
+}
+
+func TestParseEnsure_bangCallSubjectRejected(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func f() {
+	ensure !need(true)
 }
 `
 	err := parseShouldFail(src)
 	if err == nil {
-		t.Fatal("expected parse error for ensure call subject")
+		t.Fatal("expected parse error for ensure !call()")
 	}
 	msg := err.Error()
-	if !strings.Contains(msg, "ensure subject must be an identifier") && !strings.Contains(msg, "refinement-non-place-subject") {
-		t.Fatalf("expected identifier-only diagnostic, got: %v", err)
+	if !strings.Contains(msg, "ensure-negation-subject") && !strings.Contains(msg, "ensure ! needs a variable") {
+		t.Fatalf("expected bang-call diagnostic, got: %v", err)
+	}
+}
+
+func TestParseEnsure_callSubjectWithIsOk(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func need(ok Bool) {}
+
+func check(ok Bool) {
+	ensure need(ok) is Ok()
+}
+`
+	nodes, err := NewTestParser(src, ast.SetupTestLogger(nil)).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	fn := findFunction(t, nodes, "check")
+	ens := fn.Body[0].(ast.EnsureNode)
+	if !ens.IsCallSubject() {
+		t.Fatal("expected call subject")
+	}
+	if ens.Implicit != ast.EnsureImplicitNone {
+		t.Fatalf("Implicit = %v, want None", ens.Implicit)
+	}
+	if len(ens.Assertion.Constraints) != 1 || ens.Assertion.Constraints[0].Name != "Ok" {
+		t.Fatalf("assertion = %+v, want Ok()", ens.Assertion)
 	}
 }
 

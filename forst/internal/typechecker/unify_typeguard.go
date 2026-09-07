@@ -176,9 +176,8 @@ func (tc *TypeChecker) validateAssertionNode(assertionNode ast.AssertionNode, va
 			return guardUndefinedError(constraint.Name, span)
 		}
 		if constraint.Name == "Present" {
-			// Check if left type is a pointer type
-			if varLeftType.Ident != ast.TypePointer {
-				return fmt.Errorf("present assertion requires a pointer type, got %s", formatTypeIdentForDiag(varLeftType.Ident))
+			if !isPresentableNilable(tc, varLeftType) {
+				return fmt.Errorf("present assertion requires a pointer, map, or array type, got %s", formatTypeIdentForDiag(varLeftType.Ident))
 			}
 		} else {
 			// Check type guard subject type for other constraints

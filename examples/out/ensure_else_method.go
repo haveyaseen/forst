@@ -55,8 +55,7 @@ func main() {
 
 func run(ok bool) (int, error) {
 	p := &P{n: 0}
-	err := p.badMethod(ok)
-	if err != nil {
+	if err := p.badMethod(ok); err != nil {
 		return 0, err
 	}
 	return 1, nil

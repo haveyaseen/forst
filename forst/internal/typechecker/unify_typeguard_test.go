@@ -33,7 +33,7 @@ func mk(): Result(Int, ParseError) {
 	}
 }
 
-func TestUnifyTypeguard_presentRequiresPointer(t *testing.T) {
+func TestUnifyTypeguard_presentRejectsNonNilable(t *testing.T) {
 	src := `package main
 
 func main() {
@@ -45,11 +45,38 @@ func main() {
 `
 	_, _, err := Typecheck(t, src, testutil.TypecheckOpts{})
 	if err == nil {
-		t.Fatal("expected error for Present on non-pointer")
+		t.Fatal("expected error for Present on non-nilable")
 	}
-	if !strings.Contains(err.Error(), "present assertion requires a pointer") {
+	if !strings.Contains(err.Error(), "present assertion requires a pointer, map, or array") &&
+		!strings.Contains(err.Error(), "present assertion requires a pointer") {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func TestUnifyTypeguard_presentAllowsMap(t *testing.T) {
+	src := `package main
+
+func main() {
+	m := map[String]Int{}
+	if m is Present() {
+		println(len(m))
+	}
+}
+`
+	MustTypecheck(t, src, testutil.TypecheckOpts{})
+}
+
+func TestUnifyTypeguard_presentAllowsArray(t *testing.T) {
+	src := `package main
+
+func main() {
+	xs := []Int{}
+	if xs is Present() {
+		println(len(xs))
+	}
+}
+`
+	MustTypecheck(t, src, testutil.TypecheckOpts{})
 }
 
 func TestUnifyTypeguard_okDiscriminatorOnResult(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 // transformTypeGuardEnsure transforms a type guard ensure
 func (t *Transformer) transformTypeGuardEnsure(ensure *ast.EnsureNode) ([]goast.Stmt, error) {
 	// Get the variable type from the symbol table
-	varType, err := t.TypeChecker.LookupVariableType(&ensure.Variable, t.currentScope())
+	varType, err := t.lookupEnsureSubjectTypeForEmit(*ensure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup variable type: %w", err)
 	}

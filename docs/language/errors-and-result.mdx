@@ -53,8 +53,7 @@ uses `ensure x is Ok()` before using the successful value.
 A function with no success value that still has a failure path (body `ensure`
 with no success return) infers `Result(Void, Error)`. Generated Go lowers that
 to `func() error` — not a fake `(void, error)` pair. Callers treat the binding
-like other Results (`ensure r is Ok()`) or keep Error-shaped `ensure !err` when
-the void Result is folded to a single error name.
+like other Results (`ensure result` or `ensure result is Ok()`).
 
 `Ok()` and `Err()` identify the two sides of a `Result` during `is` and
 `ensure` checks. They are currently checks. General `Ok(value)` and
@@ -62,8 +61,8 @@ the void Result is folded to a single error name.
 
 Bare `ensure x is Ok()` with no `else` promotes the caller to `Result` (except
 `main` / Go tests) and returns the subject's error slot — same rule as
-`ensure !err`. Use `if x is Ok()` when you want local handling without
-promotion.
+`ensure !err` on an `Error`. Use `if x is Ok()` when you want local handling
+without promotion.
 
 ## Return a specific error with ensure
 

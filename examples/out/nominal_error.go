@@ -27,11 +27,11 @@ func Test() error {
 }
 
 func main() {
-	err := Test()
-	if err != nil {
-		fmt.Println(err)
+	result := Test()
+	if result != nil {
+		fmt.Println(result)
 		{
-			fmt.Fprintf(os.Stderr, "ensure failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "ensure failed: %v\n", result)
 			os.Exit(1)
 		}
 	}

@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 // Void body + ensure infers Result(Void, Error) -> Go `func() error`.
+// Bare ensure accepts a call subject when no success value is needed.
 // Golden: ../out/result_void_ensure.go
 error NeedFailed {reason: String}
 
@@ -12,8 +13,7 @@ func need(ok Bool) {
 }
 
 func run(ok Bool) {
-	err := need(ok)
-	ensure err is Ok()
+	ensure need(ok)
 	return 1
 }
 

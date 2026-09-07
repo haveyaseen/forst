@@ -354,7 +354,7 @@ func MarkdownForKeywordToken(t ast.TokenIdent) string {
 		}, "\n"))
 	case ast.TokenLogicalNot:
 		return keywordDoc("!", strings.Join([]string{
-			"Inverts a boolean. Often used with `ensure`: `ensure !err else { ... }` runs the block when `err` is truthy (for example non-nil error).",
+			"Inverts a boolean. Often used with `ensure`: `ensure !err` checks that an `Error` is nil. For a `Result`, prefer `ensure result`.",
 		}, "\n"))
 	case ast.TokenNil:
 		return keywordDoc("nil", strings.Join([]string{

@@ -1,0 +1,5 @@
+{
+  "id": "ensure/bang-call-subject-rejected",
+  "expect": "parse-error",
+  "title": "bang ensure rejects call subject"
+}

@@ -14,7 +14,7 @@ import (
 func (t *Transformer) transformEnsureCondition(ensure *ast.EnsureNode) ([]goast.Stmt, error) {
 	t.logAssertionBaseType(ensure)
 
-	varType, err := t.TypeChecker.LookupVariableType(&ensure.Variable, t.currentScope())
+	varType, err := t.lookupEnsureSubjectTypeForEmit(*ensure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup variable type: %w", err)
 	}
@@ -65,7 +65,7 @@ func (t *Transformer) handleTypeTargetMembership(ensure *ast.EnsureNode, varType
 		Ident:    typeTarget.Name,
 		TypeKind: ast.TypeKindUserDefined,
 	}); ok && len(members) > 0 {
-		expr, err := t.transformExpression(ensure.Variable)
+		expr, err := t.transformExpression(ensure.EnsureSubject())
 		if err != nil {
 			return nil, true, fmt.Errorf("failed to transform type-target subject: %w", err)
 		}
@@ -122,7 +122,7 @@ func (t *Transformer) handleTypeGuardCall(ensure *ast.EnsureNode, varType ast.Ty
 				return nil, true, fmt.Errorf("failed to hash type guard node: %w", err)
 			}
 			guardFuncName := hash.ToGuardIdent()
-			expr, err := t.transformExpression(ensure.Variable)
+			expr, err := t.transformExpression(ensure.EnsureSubject())
 			if err != nil {
 				return nil, true, fmt.Errorf("failed to transform expression: %w", err)
 			}

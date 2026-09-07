@@ -322,3 +322,180 @@ func main() {}
 		t.Fatalf("need return = %v, want Error", formatTypeList(sig.ReturnTypes))
 	}
 }
+
+func TestCheckTypes_bareEnsure_pointerMapArray(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+error E { message: String }
+
+func checkPtr(p *Int) {
+	ensure p
+		else E({message: "nil ptr"})
+	return 1
+}
+
+func checkMap(m map[String]Int) {
+	ensure m
+		else E({message: "nil map"})
+	return 1
+}
+
+func checkSlice(xs []Int) {
+	ensure xs
+		else E({message: "nil slice"})
+	return 1
+}
+
+func main() {}
+`
+	_ = typecheckUpstream(t, src)
+}
+
+func TestCheckTypes_bareEnsure_string_errors(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func f(name String) {
+	ensure name
+}
+
+func main() {}
+`
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+	toks := lexer.New([]byte(src), "t.ft", log).Lex()
+	nodes, err := parser.New(toks, "t.ft", log).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	tc := New(log, false)
+	err = tc.CheckTypes(nodes)
+	if err == nil {
+		t.Fatal("expected ensure-bare-subject for String")
+	}
+	if !strings.Contains(err.Error(), "ensure-bare-subject") {
+		t.Fatalf("expected ensure-bare-subject, got: %v", err)
+	}
+}
+
+func TestCheckTypes_bareEnsure_error_errors(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func f(err Error) {
+	ensure err
+}
+
+func main() {}
+`
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+	toks := lexer.New([]byte(src), "t.ft", log).Lex()
+	nodes, err := parser.New(toks, "t.ft", log).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	tc := New(log, false)
+	err = tc.CheckTypes(nodes)
+	if err == nil {
+		t.Fatal("expected ensure-bare-subject for Error")
+	}
+	if !strings.Contains(err.Error(), "ensure-bare-subject") {
+		t.Fatalf("expected ensure-bare-subject, got: %v", err)
+	}
+}
+
+func TestCheckTypes_bangEnsure_pointer_nil(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+error E { message: String }
+
+func check(p *Int) {
+	ensure !p
+		else E({message: "expected nil"})
+	return 1
+}
+
+func main() {}
+`
+	_ = typecheckUpstream(t, src)
+}
+
+func TestCheckTypes_bareEnsure_voidResultCallSubject(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+error E { message: String }
+
+func need(ok Bool) {
+	ensure ok is True()
+		else E({message: "bad"})
+}
+
+func Run(ok Bool) {
+	ensure need(ok)
+	return 1
+}
+
+func main() {
+	r := Run(true)
+	ensure r is Ok()
+	println(string(r))
+}
+`
+	_ = typecheckUpstream(t, src)
+}
+
+func TestCheckTypes_ensureCallSubject_isOk(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+error E { message: String }
+
+func need(ok Bool) {
+	ensure ok is True()
+		else E({message: "bad"})
+}
+
+func Run(ok Bool) {
+	ensure need(ok) is Ok()
+	return 1
+}
+
+func main() {}
+`
+	_ = typecheckUpstream(t, src)
+}
+
+func TestCheckTypes_bareEnsure_callSubject_rejectsNonResultBool(t *testing.T) {
+	t.Parallel()
+	src := `package main
+
+func greet(): String {
+	return "hi"
+}
+
+func Run() {
+	ensure greet()
+}
+
+func main() {}
+`
+	log := logrus.New()
+	log.SetLevel(logrus.PanicLevel)
+	toks := lexer.New([]byte(src), "t.ft", log).Lex()
+	nodes, err := parser.New(toks, "t.ft", log).ParseFile()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	tc := New(log, false)
+	err = tc.CheckTypes(nodes)
+	if err == nil {
+		t.Fatal("expected ensure-bare-subject for String call")
+	}
+	if !strings.Contains(err.Error(), "ensure-bare-subject") {
+		t.Fatalf("expected ensure-bare-subject, got: %v", err)
+	}
+}

@@ -214,7 +214,7 @@ func (tc *TypeChecker) ensureUsesBuiltinResultOkErrDiscriminator(n ast.EnsureNod
 	if c != "Ok" && c != "Err" {
 		return false
 	}
-	vt, err := tc.LookupVariableType(&n.Variable, tc.CurrentScope())
+	vt, err := tc.lookupEnsureSubjectType(n)
 	if err != nil {
 		return false
 	}
@@ -373,6 +373,9 @@ func (tc *TypeChecker) refinedTypesForResultEnsureBlockFailure(varLeftType ast.T
 // applyEnsureBlockResultFailureNarrowing registers the failure-branch Result(S,F) refinement for the
 // ensure subject inside an ensure block body (built-in Ok/Err only).
 func (tc *TypeChecker) applyEnsureBlockResultFailureNarrowing(n ast.EnsureNode) {
+	if n.IsCallSubject() {
+		return
+	}
 	vn := n.Variable
 	vt, err := tc.LookupVariableType(&vn, tc.CurrentScope())
 	if err != nil {
@@ -498,6 +501,14 @@ func (tc *TypeChecker) assertionRefinesBuiltinSubjectWithOnlyBuiltinConstraints(
 // Field paths such as `g.cells` register under the full identifier so lookup + hover match
 // simple variables (Min/Max chain, etc.).
 func (tc *TypeChecker) applyEnsureSuccessorNarrowing(n ast.EnsureNode) {
+	// Call subjects are fire-and-forget — there is no place binding to refine.
+	if n.IsCallSubject() {
+		tc.log.WithFields(logrus.Fields{
+			"function": "applyEnsureSuccessorNarrowing",
+			"subject":  n.Subject.String(),
+		}).Debug("skipping ensure successor narrowing for call subject")
+		return
+	}
 	vn := n.Variable
 	// TypeTarget: narrow subject to the named type (literal union / nominal domain).
 	if tt, ok := n.Target.(ast.TypeTarget); ok {

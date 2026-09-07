@@ -5,6 +5,9 @@ import "fmt"
 // Nominal error type (RFC 02): `error Name { ... }` introduces a named failure kind with a
 // struct payload. It is not a plain `type` alias; the compiler ties it to the built-in `Error`
 // for typing and interop. Payload fields use the same record shape as an ordinary struct type.
+// Also covers bare ensure on a bound void Result (assign then ensure) when the failure path
+// needs the value.
+// Golden: ../out/nominal_error.go
 error NotPositive {message: String}
 
 func Test() {
@@ -14,8 +17,8 @@ func Test() {
 }
 
 func main() {
-	err := Test()
-	ensure !err else {
-		fmt.Println(err)
+	result := Test()
+	ensure result else {
+		fmt.Println(result)
 	}
 }

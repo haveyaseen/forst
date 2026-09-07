@@ -249,7 +249,7 @@ func collectResultErrSlotUsedStmts(stmts []ast.Node, varName string) bool {
 	for _, n := range stmts {
 		switch node := n.(type) {
 		case ast.EnsureNode:
-			if string(node.Variable.Ident.ID) == varName {
+			if place, ok := node.EnsurePlaceSubject(); ok && string(place.Ident.ID) == varName {
 				return true
 			}
 		case ast.IfNode:
@@ -428,14 +428,37 @@ func collectResultSuccessValueUsed(body []ast.Node, varName string) bool {
 			}
 			return true
 		},
+		OnEnsure: func(ens ast.EnsureNode) bool {
+			// `ensure x is Ok(42)` compares the success payload — keep it bound.
+			if place, ok := ens.EnsurePlaceSubject(); ok && string(place.Ident.ID) == varName {
+				if ensureAssertionNeedsResultSuccessValue(ens) {
+					found = true
+				}
+			}
+			if ens.Error != nil {
+				switch err := (*ens.Error).(type) {
+				case ast.EnsureErrorCall:
+					for _, a := range err.ErrorArgs {
+						visit(a)
+					}
+				case ast.EnsureErrorExpr:
+					visit(err.Expr)
+				}
+			}
+			return true
+		},
 		OnIf: func(node ast.IfNode) bool {
 			visitNode(node.Init)
 			if !resultDiscriminatorUsesVar(node.Condition, varName) {
 				visitNode(node.Condition)
+			} else if isResultOkWithValueCompare(node.Condition, varName) {
+				found = true
 			}
 			for _, elif := range node.ElseIfs {
 				if !resultDiscriminatorUsesVar(elif.Condition, varName) {
 					visitNode(elif.Condition)
+				} else if isResultOkWithValueCompare(elif.Condition, varName) {
+					found = true
 				}
 			}
 			return true
@@ -466,6 +489,55 @@ func collectResultSuccessValueUsed(body []ast.Node, varName string) bool {
 	})
 	walkNestedSwitchExpressions(body, visit)
 	return found
+}
+
+// ensureAssertionNeedsResultSuccessValue is true when ensure compares Ok's success payload.
+func ensureAssertionNeedsResultSuccessValue(ens ast.EnsureNode) bool {
+	if constraintListNeedsOkValue(ens.Assertion.Constraints) {
+		return true
+	}
+	for _, alt := range ens.Assertion.OrChains {
+		if constraintListNeedsOkValue(alt.Constraints) {
+			return true
+		}
+	}
+	if at, ok := ens.Target.(ast.AssertionTarget); ok {
+		for _, chain := range at.Chains {
+			if constraintListNeedsOkValue(chain.Constraints) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func constraintListNeedsOkValue(cs []ast.ConstraintNode) bool {
+	for _, c := range cs {
+		if c.Name == "Ok" && len(c.Args) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// isResultOkWithValueCompare reports `x is Ok(value)` style conditions that need the success slot.
+func isResultOkWithValueCompare(cond ast.Node, varName string) bool {
+	bin, ok := cond.(ast.BinaryExpressionNode)
+	if !ok || bin.Operator != ast.TokenIs {
+		return false
+	}
+	left, ok := bin.Left.(ast.VariableNode)
+	if !ok || string(left.Ident.ID) != varName {
+		return false
+	}
+	switch r := bin.Right.(type) {
+	case ast.AssertionNode:
+		return constraintListNeedsOkValue(r.Constraints)
+	case *ast.AssertionNode:
+		return r != nil && constraintListNeedsOkValue(r.Constraints)
+	default:
+		return false
+	}
 }
 
 // collectVariableAnyUse reports whether varName appears in any expression in body.

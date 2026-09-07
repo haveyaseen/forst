@@ -107,6 +107,10 @@ func (t *Transformer) ensurePropagatedFailureExpr(stmt ast.EnsureNode) (goast.Ex
 	if stmt.Error != nil {
 		return nil, false
 	}
+	// Call-subject Result Ok: Init binds `err` from the call (see transformEnsureResultCallSubject).
+	if stmt.IsCallSubject() && ensureIsOnlyOkAssertion(stmt) {
+		return goast.NewIdent("err"), true
+	}
 	variableType, err := t.TypeChecker.LookupVariableType(&stmt.Variable, t.currentScope())
 	if err != nil {
 		return nil, false
@@ -177,13 +181,13 @@ func ensureIsOnlyNilAssertion(stmt ast.EnsureNode) bool {
 
 // specializeEnsureForEmit resolves bare/bang ensure sugar using the subject type.
 func (t *Transformer) specializeEnsureForEmit(ensure ast.EnsureNode) (ast.EnsureNode, error) {
-	variableType, err := t.TypeChecker.LookupVariableType(&ensure.Variable, t.currentScope())
+	variableType, err := t.lookupEnsureSubjectTypeForEmit(ensure)
 	if err != nil {
 		variableType = ast.TypeNode{}
 	}
 	// After Ok() narrowing, LookupVariableType may be the success payload (e.g. Void).
 	// Prefer Result(Void) when this local is a folded void-Result error binding.
-	if t.isVoidResultErrorBinding(ensure.Variable) {
+	if !ensure.IsCallSubject() && t.isVoidResultErrorBinding(ensure.Variable) {
 		variableType = ast.NewResultType(
 			ast.TypeNode{Ident: ast.TypeVoid},
 			ast.TypeNode{Ident: ast.TypeError},
@@ -203,6 +207,21 @@ func (t *Transformer) specializeEnsureForEmit(ensure ast.EnsureNode) (ast.Ensure
 		return ensure, nil
 	}
 	return t.TypeChecker.SpecializeEnsureSugar(ensure, variableType)
+}
+
+// lookupEnsureSubjectTypeForEmit resolves the ensure subject type for codegen.
+func (t *Transformer) lookupEnsureSubjectTypeForEmit(ensure ast.EnsureNode) (ast.TypeNode, error) {
+	if ensure.IsCallSubject() {
+		ts, err := t.TypeChecker.LookupInferredType(ensure.Subject, false)
+		if err != nil {
+			return ast.TypeNode{}, err
+		}
+		if len(ts) != 1 {
+			return ast.TypeNode{}, fmt.Errorf("ensure call subject: expected 1 type, got %d", len(ts))
+		}
+		return ts[0], nil
+	}
+	return t.TypeChecker.LookupVariableType(&ensure.Variable, t.currentScope())
 }
 
 func (t *Transformer) isVoidResultErrorBinding(vn ast.VariableNode) bool {

@@ -112,12 +112,22 @@ func (w *hashWalk) hashScopeEnsure(n ast.EnsureNode) (NodeHash, error) {
 	if err := w.h.writeHashes(hasher, NodeKind["Ensure"]); err != nil {
 		return 0, err
 	}
-	vh, err := w.hash(n.Variable)
-	if err != nil {
-		return 0, err
-	}
-	if err := w.h.writeHashes(hasher, vh); err != nil {
-		return 0, err
+	if n.Subject != nil {
+		sh, err := w.hash(n.Subject)
+		if err != nil {
+			return 0, err
+		}
+		if err := w.h.writeHashes(hasher, sh); err != nil {
+			return 0, err
+		}
+	} else {
+		vh, err := w.hash(n.Variable)
+		if err != nil {
+			return 0, err
+		}
+		if err := w.h.writeHashes(hasher, vh); err != nil {
+			return 0, err
+		}
 	}
 	if err := w.h.writeHashes(hasher, uint8(n.Implicit)); err != nil {
 		return 0, err

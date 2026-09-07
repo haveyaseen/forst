@@ -28,8 +28,7 @@ func sibling(): String {
 
 func run(ok Bool) {
 	p := &P{n: 0}
-	err := p.badMethod(ok)
-	ensure !err
+	ensure p.badMethod(ok)
 	return 1
 }
 

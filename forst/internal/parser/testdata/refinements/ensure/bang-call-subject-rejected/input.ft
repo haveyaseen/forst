@@ -1,0 +1,5 @@
+package main
+
+func f() {
+    ensure !need(true)
+}

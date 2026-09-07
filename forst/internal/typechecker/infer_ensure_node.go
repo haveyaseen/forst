@@ -17,7 +17,7 @@ func (tc *TypeChecker) inferEnsureNode(node ast.Node) ([]ast.TypeNode, error) {
 	}
 
 	// Re-specialize for narrowing / Ok discriminators (inferEnsureType specializes a copy).
-	variableType, err := tc.LookupVariableType(&ensureNode.Variable, tc.CurrentScope())
+	variableType, err := tc.lookupEnsureSubjectType(ensureNode)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (tc *TypeChecker) inferEnsureNode(node ast.Node) ([]ast.TypeNode, error) {
 
 	if ensureNode.Block != nil {
 		tc.pushScope(ensureNode.Block)
-		if _, err := tc.inferExpressionType(ensureNode.Variable); err != nil {
+		if _, err := tc.inferExpressionType(ensureNode.EnsureSubject()); err != nil {
 			return nil, err
 		}
 		if tc.ensureUsesBuiltinResultOkErrDiscriminator(ensureNode) {
@@ -55,7 +55,7 @@ func (tc *TypeChecker) inferEnsureNode(node ast.Node) ([]ast.TypeNode, error) {
 			tc.applyEnsureSuccessorNarrowing(ensureNode)
 		}
 	} else {
-		if _, err := tc.inferExpressionType(ensureNode.Variable); err != nil {
+		if _, err := tc.inferExpressionType(ensureNode.EnsureSubject()); err != nil {
 			return nil, err
 		}
 		tc.applyEnsureSuccessorNarrowing(ensureNode)

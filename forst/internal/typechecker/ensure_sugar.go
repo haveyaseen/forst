@@ -24,9 +24,11 @@ func (tc *TypeChecker) SpecializeEnsureSugar(ensure ast.EnsureNode, subjectType 
 			name = "True"
 		case base.IsResultType():
 			name = "Ok"
+		case isPresentableNilable(tc, subjectType):
+			name = "Present"
 		default:
-			return ensure, reportBodyf(ensure.Variable.Ident.Span, "ensure-bare-subject",
-				"ensure without `is` needs a Bool or Result subject (got %s)",
+			return ensure, reportBodyf(ensure.EnsureSubjectSpan(), "ensure-bare-subject",
+				"ensure without `is` needs a Bool, Result, or pointer/map/array subject (got %s)",
 				formatTypeNodeForDiag(subjectType))
 		}
 	case ast.EnsureImplicitBang:
@@ -37,14 +39,14 @@ func (tc *TypeChecker) SpecializeEnsureSugar(ensure ast.EnsureNode, subjectType 
 			if len(base.TypeParams) >= 1 && base.TypeParams[0].Ident == ast.TypeVoid {
 				name = "Ok"
 			} else {
-				return ensure, reportBodyf(ensure.Variable.Ident.Span, "ensure-bang-result",
+				return ensure, reportBodyf(ensure.EnsureSubjectSpan(), "ensure-bang-result",
 					"ensure ! on Result(%s, …) is ambiguous — write `ensure %s is Ok()` or `ensure %s is Err()`",
 					formatTypeNodeForDiag(base.TypeParams[0]), ensure.Variable.Ident.ID, ensure.Variable.Ident.ID)
 			}
 		case isNilableType(tc, subjectType):
 			name = "Nil"
 		default:
-			return ensure, reportBodyf(ensure.Variable.Ident.Span, "ensure-bang-subject",
+			return ensure, reportBodyf(ensure.EnsureSubjectSpan(), "ensure-bang-subject",
 				"ensure ! needs a Bool, Error/nilable, or Result(Void, …) subject (got %s)",
 				formatTypeNodeForDiag(subjectType))
 		}

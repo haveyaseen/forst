@@ -9,8 +9,7 @@
     }
 
     func open() {
-    	err := claim(7)
-    	ensure !err
+    	ensure claim(7)
     	return *slot
     }
     ```
@@ -29,8 +28,7 @@
     }
 
     func open() (int, error) {
-    	err := claim(7)
-    	if err != nil {
+    	if err := claim(7); err != nil {
     		return 0, err
     	}
     	return *slot, nil

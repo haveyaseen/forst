@@ -27,6 +27,29 @@ func TestEnsureNode_String_error_branches(t *testing.T) {
 	}
 }
 
+func TestEnsureNode_callSubject_helpers(t *testing.T) {
+	call := FunctionCallNode{
+		Function:  Ident{ID: "need"},
+		Arguments: []ExpressionNode{VariableNode{Ident: Ident{ID: "ok"}}},
+	}
+	e := EnsureNode{
+		Subject:  call,
+		Implicit: EnsureImplicitBare,
+	}
+	if !e.IsCallSubject() {
+		t.Fatal("expected IsCallSubject")
+	}
+	if _, ok := e.EnsurePlaceSubject(); ok {
+		t.Fatal("call subject must not report a place")
+	}
+	if e.EnsureSubject() == nil {
+		t.Fatal("EnsureSubject nil")
+	}
+	if !strings.Contains(e.String(), "need") {
+		t.Fatalf("String = %q", e.String())
+	}
+}
+
 func TestEnsureErrorCall_and_EnsureErrorVar_String(t *testing.T) {
 	c := EnsureErrorCall{ErrorType: "E", ErrorArgs: []ExpressionNode{IntLiteralNode{Value: 2}}}
 	if !strings.Contains(c.String(), "E") || !strings.Contains(c.String(), "2") {

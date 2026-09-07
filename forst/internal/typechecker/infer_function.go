@@ -30,11 +30,7 @@ func (tc *TypeChecker) functionEnsureImpliesResultReturn(fn ast.FunctionNode) bo
 
 // Helper: isNilableType checks if a type can be assigned nil
 func isNilableType(tc *TypeChecker, t ast.TypeNode) bool {
-	base := t
-	chain := tc.GetTypeAliasChain(t)
-	if len(chain) > 0 {
-		base = chain[len(chain)-1]
-	}
+	base := resolveNilableBase(tc, t)
 
 	switch base.Ident {
 	case ast.TypePointer, ast.TypeError, ast.TypeMap, ast.TypeArray:
@@ -47,4 +43,29 @@ func isNilableType(tc *TypeChecker, t ast.TypeNode) bool {
 	}
 
 	return false
+}
+
+// isPresentableNilable is true for subjects that support Present() / bare ensure sugar:
+// Pointer, Map, Array (nilable except Error).
+func isPresentableNilable(tc *TypeChecker, t ast.TypeNode) bool {
+	base := resolveNilableBase(tc, t)
+	switch base.Ident {
+	case ast.TypePointer, ast.TypeMap, ast.TypeArray:
+		return true
+	}
+	switch string(base.Ident) {
+	case "Pointer", "Map", "Array":
+		return true
+	}
+	return false
+}
+
+func resolveNilableBase(tc *TypeChecker, t ast.TypeNode) ast.TypeNode {
+	base := t
+	if tc != nil {
+		if chain := tc.GetTypeAliasChain(t); len(chain) > 0 {
+			base = chain[len(chain)-1]
+		}
+	}
+	return base
 }

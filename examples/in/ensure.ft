@@ -13,13 +13,9 @@ func mustNotExceedSpeedLimit(speed Int) {
 }
 
 func checkConditions() {
-	err := mustBeARealName("John")
-	ensure err is Nil()
-	    else err
+	ensure mustBeARealName("John")
 	speed := 80
-	err = mustNotExceedSpeedLimit(speed)
-	ensure !err
-	    else err
+	ensure mustNotExceedSpeedLimit(speed)
 	return 20
 }
 

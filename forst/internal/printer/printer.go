@@ -697,8 +697,17 @@ func (p *printer) printReturn(r ast.ReturnNode) (string, error) {
 
 func (p *printer) printEnsure(e ast.EnsureNode) (string, error) {
 	var b strings.Builder
-	v := string(e.Variable.Ident.ID)
-	if e.Variable.Ident.ID != "" {
+	v := ""
+	if e.IsCallSubject() {
+		subj, err := p.printExpr(e.Subject)
+		if err != nil {
+			return "", err
+		}
+		v = subj
+	} else {
+		v = string(e.Variable.Ident.ID)
+	}
+	if v != "" {
 		switch e.Implicit {
 		case ast.EnsureImplicitBang:
 			b.WriteString("ensure !")

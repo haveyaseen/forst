@@ -37,8 +37,7 @@ func need(ok bool) error {
 }
 
 func run(ok bool) (int, error) {
-	err := need(ok)
-	if err != nil {
+	if err := need(ok); err != nil {
 		return 0, err
 	}
 	return 1, nil

@@ -114,6 +114,13 @@ func (tc *TypeChecker) lookupVariableForExpression(variable *ast.VariableNode, s
 
 // LookupEnsureBaseType looks up the base type of an ensure node in a given scope.
 func (tc *TypeChecker) LookupEnsureBaseType(ensure *ast.EnsureNode, scope *Scope) (*ast.TypeNode, error) {
+	if ensure.IsCallSubject() {
+		baseType, err := tc.lookupEnsureSubjectType(*ensure)
+		if err != nil {
+			return nil, err
+		}
+		return &baseType, nil
+	}
 	baseType, err := tc.LookupVariableType(&ensure.Variable, scope)
 	if err != nil {
 		return nil, err

@@ -21,7 +21,7 @@ func (at *AssertionTransformer) transformEnsureConstraints(ensure ast.EnsureNode
 	if err != nil {
 		return nil, err
 	}
-	transformed, err := at.TransformBuiltinConstraint(baseType.Ident, ensure.Variable, ensure.Assertion.Constraints[0])
+	transformed, err := at.TransformBuiltinConstraint(baseType.Ident, ensure.EnsureSubject(), ensure.Assertion.Constraints[0])
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform ensure conditions constraints: %w", err)
 	}
@@ -38,6 +38,9 @@ func (t *Transformer) transformEnsureConstraint(ensure ast.EnsureNode, constrain
 	if ensure.Assertion.BaseType == nil && len(ensure.Assertion.Constraints) == 1 {
 		c := ensure.Assertion.Constraints[0]
 		if c.Name == "Ok" || c.Name == "Err" {
+			if ensure.IsCallSubject() {
+				return nil, fmt.Errorf("Result Ok/Err on call subject must use transformEnsureResultCallSubject")
+			}
 			if t.hasResultLocalSplitForSimpleVariable(ensure.Variable) || varType.IsResultType() || t.compoundVarDeclaresResultField(ensure.Variable) {
 				return t.transformResultIsDiscriminator(ensure.Variable, c)
 			}
@@ -50,8 +53,10 @@ func (t *Transformer) transformEnsureConstraint(ensure ast.EnsureNode, constrain
 		return goast.NewIdent("true"), nil
 	}
 
+	subjectExpr := ensure.EnsureSubject()
+
 	// Try built-in constraints first
-	if transformed, err := t.assertionTransformer.TransformBuiltinConstraint(builtinSubject.Ident, ensure.Variable, constraint); err == nil {
+	if transformed, err := t.assertionTransformer.TransformBuiltinConstraint(builtinSubject.Ident, subjectExpr, constraint); err == nil {
 		return transformed, nil
 	}
 
@@ -63,7 +68,7 @@ func (t *Transformer) transformEnsureConstraint(ensure ast.EnsureNode, constrain
 			return nil, fmt.Errorf("failed to hash type guard node: %w", err)
 		}
 		guardFuncName := hash.ToGuardIdent()
-		expr, err := t.transformExpression(ensure.Variable)
+		expr, err := t.transformExpression(subjectExpr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to transform expression: %w", err)
 		}
@@ -96,7 +101,7 @@ func (t *Transformer) transformEnsureConstraint(ensure ast.EnsureNode, constrain
 		}).Debug("Trying type guard lookup for base type in alias chain")
 		guard, err := t.lookupTypeGuardNode(constraint.Name)
 		if err == nil && guard != nil && t.isTypeGuardCompatible(baseType, guard) {
-			expr, err := t.transformExpression(ensure.Variable)
+			expr, err := t.transformExpression(subjectExpr)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform expression: %w", err)
 			}
@@ -118,7 +123,7 @@ func (t *Transformer) transformEnsureConstraint(ensure ast.EnsureNode, constrain
 			"function":   "transformEnsureConstraint",
 		}).Debug("Retrying built-in constraint for base type in alias chain")
 		typeIdent := ast.TypeIdent(baseType.Ident)
-		if result, err := t.assertionTransformer.TransformBuiltinConstraint(typeIdent, ensure.Variable, constraint); err == nil {
+		if result, err := t.assertionTransformer.TransformBuiltinConstraint(typeIdent, subjectExpr, constraint); err == nil {
 			return result, nil
 		}
 	}

@@ -7,13 +7,11 @@ import (
 )
 
 func checkConditions() (int, error) {
-	err := mustBeARealName("John")
-	if err != nil {
+	if err := mustBeARealName("John"); err != nil {
 		return 0, err
 	}
 	speed := 80
-	err = mustNotExceedSpeedLimit(speed)
-	if err != nil {
+	if err := mustNotExceedSpeedLimit(speed); err != nil {
 		return 0, err
 	}
 	return 20, nil

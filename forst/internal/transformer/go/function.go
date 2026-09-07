@@ -239,7 +239,9 @@ func (t *Transformer) transformFunction(scopeNode ast.Node, n ast.FunctionNode) 
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform statement: %s", err)
 			}
-			stmts = append(stmts, goStmt)
+			if goStmt != nil {
+				stmts = append(stmts, goStmt)
+			}
 		}
 	}
 

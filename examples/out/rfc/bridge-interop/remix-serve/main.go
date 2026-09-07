@@ -45,7 +45,6 @@ type ListTodosResponse struct {
 	Open    int    `json:"open"`
 }
 
-// T_7nWLvcjQ76D: TypeDefShapeExpr({activityKinds: Value("ready"), open: Value(Variable(open)), recentTitles: Value(""), savedAt: Value(Variable(snap.savedAt))})
 type T_7nWLvcjQ76D struct {
 	ActivityKinds string  `json:"activityKinds"`
 	Open          float64 `json:"open"`
@@ -57,7 +56,6 @@ type T_8ycLsMp1YzS struct {
 	SavedAt string `json:"savedAt"`
 }
 
-// T_D415raHQ7uQ: TypeDefShapeExpr({done: Value(Variable(done)), encoded: Value(Variable(encoded)), open: Value(Variable(open))})
 type T_D415raHQ7uQ struct {
 	Done    float64 `json:"done"`
 	Encoded string  `json:"encoded"`
@@ -78,7 +76,7 @@ func AddTodo(input AddTodoRequest) (AddTodoResponse, error) {
 	println("api:AddTodo:" + input.Title)
 	created, createdErr := forst_bridge_callsync_legacy_todos_js_addTodo(input.Title)
 	if createdErr != nil {
-		return AddTodoResponse{Status: "", Id: "", Title: ""}, createdErr
+		return AddTodoResponse{Id: "", Title: "", Status: ""}, createdErr
 	}
 	return AddTodoResponse{Id: created.Id, Title: created.Title, Status: created.Status}, nil
 }
@@ -87,7 +85,7 @@ func CompleteTodo(input CompleteTodoRequest) (CompleteTodoResponse, error) {
 	println("api:CompleteTodo:" + input.Id)
 	updated, updatedErr := forst_bridge_callsync_legacy_todos_js_toggleTodo(input.Id)
 	if updatedErr != nil {
-		return CompleteTodoResponse{Id: "", Title: "", Status: ""}, updatedErr
+		return CompleteTodoResponse{Title: "", Status: "", Id: ""}, updatedErr
 	}
 	return CompleteTodoResponse{Id: updated.Id, Title: updated.Title, Status: updated.Status}, nil
 }
@@ -100,7 +98,7 @@ func GetDashboard() (T_7nWLvcjQ76D, error) {
 	}
 	snap, snapErr := forst_bridge_callasync_legacy_todos_js_persistSnapshot()
 	if snapErr != nil {
-		return T_7nWLvcjQ76D{SavedAt: "", Open: 0.0, RecentTitles: "", ActivityKinds: ""}, snapErr
+		return T_7nWLvcjQ76D{Open: 0.0, RecentTitles: "", ActivityKinds: "", SavedAt: ""}, snapErr
 	}
 	return T_7nWLvcjQ76D{Open: open, RecentTitles: "", ActivityKinds: "ready", SavedAt: snap.SavedAt}, nil
 }
@@ -113,11 +111,11 @@ func ListTodos() (T_D415raHQ7uQ, error) {
 	}
 	open, openErr := forst_bridge_callsync_legacy_todos_js_openCount()
 	if openErr != nil {
-		return T_D415raHQ7uQ{Done: 0.0, Encoded: "", Open: 0.0}, openErr
+		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}, openErr
 	}
 	total, totalErr := forst_bridge_callsync_legacy_todos_js_todoCount()
 	if totalErr != nil {
-		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}, totalErr
+		return T_D415raHQ7uQ{Done: 0.0, Encoded: "", Open: 0.0}, totalErr
 	}
 	done := total - open
 	return T_D415raHQ7uQ{Open: open, Done: done, Encoded: encoded}, nil

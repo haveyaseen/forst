@@ -26,9 +26,18 @@ func (t *Transformer) transformStatement(stmt ast.Node) (goast.Stmt, error) {
 	}
 	for _, h := range handlers {
 		s, ok, err := h(stmt)
-		if ok {
-			return s, err
+		if !ok {
+			continue
 		}
+		if err != nil {
+			return nil, err
+		}
+		// Handlers must not return a nil statement without an error — that
+		// puts typed-nil entries into BlockStmt.List and breaks go/ast.Walk.
+		if s == nil {
+			return &goast.EmptyStmt{}, nil
+		}
+		return s, nil
 	}
 	return &goast.EmptyStmt{}, nil
 }

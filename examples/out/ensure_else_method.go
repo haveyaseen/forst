@@ -15,10 +15,6 @@ type P struct {
 	n int
 }
 
-// T_CQ83zP8NNan: TypeDefShapeExpr({})
-type T_CQ83zP8NNan struct {
-}
-
 func (e E) Error() string {
 	return "error"
 }

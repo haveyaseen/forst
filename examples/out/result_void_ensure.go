@@ -10,10 +10,6 @@ type NeedFailed struct {
 	reason string
 }
 
-// T_CQ83zP8NNan: TypeDefShapeExpr({})
-type T_CQ83zP8NNan struct {
-}
-
 func (e NeedFailed) Error() string {
 	return "error"
 }

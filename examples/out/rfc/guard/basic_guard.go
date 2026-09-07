@@ -10,14 +10,6 @@ import (
 // Password: TypeDefAssertionExpr(String)
 type Password string
 
-// T_VzGjSGttgtP: TypeDefShapeExpr({})
-type T_VzGjSGttgtP struct {
-}
-
-// T_f4j3qrSNtqm: TypeDefShapeExpr({})
-type T_f4j3qrSNtqm struct {
-}
-
 func G_Td6yR1SKQP9(password Password) bool {
 	if utf8.RuneCountInString(string(password)) < 12 {
 		return false

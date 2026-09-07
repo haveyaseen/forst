@@ -6,10 +6,6 @@ import (
 	os "os"
 )
 
-// T_H4c2uQ34ZJV: TypeDefShapeExpr({})
-type T_H4c2uQ34ZJV struct {
-}
-
 func main() {
 	x, xErr := okInt()
 	if xErr != nil {

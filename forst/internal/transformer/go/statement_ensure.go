@@ -81,7 +81,9 @@ func (t *Transformer) transformEnsureStatement(ensureNode ast.EnsureNode, origin
 			if err != nil {
 				return nil, err
 			}
-			finallyStmts = append(finallyStmts, goStmt)
+			if goStmt != nil {
+				finallyStmts = append(finallyStmts, goStmt)
+			}
 		}
 	}
 

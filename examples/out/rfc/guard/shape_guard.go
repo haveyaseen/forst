@@ -16,44 +16,12 @@ type AppMutation struct {
 type MutationArg struct {
 }
 
-// T_488eVThFocF: TypeDefShapeExpr({ctx: AppContext, input: {name: String}})
 type T_488eVThFocF struct {
 	ctx   AppContext
 	input User
 }
 
-type T_5ksn1adCDmh string
-// T_8XMnUftkRoa: TypeDefShapeExpr({sessionId: Pointer(String), user: Pointer(User)})
-type T_8XMnUftkRoa struct {
-	sessionId *string
-	user      *User
-}
-
-// T_BDvMhNEUYH5: TypeDefShapeExpr({ctx: ctx})
-type T_BDvMhNEUYH5 struct {
-	ctx T_5ksn1adCDmh
-}
-
-// T_F1jpghi8Uyp: TypeDefShapeExpr({input: {name: String}})
-type T_F1jpghi8Uyp struct {
-	input User
-}
-
 type T_PBoS2ej5ec7 string
-type T_PFzGCZEtwX2 string
-// T_U2aboJvjLFx: TypeDefShapeExpr({input: input})
-type T_U2aboJvjLFx struct {
-	input T_PFzGCZEtwX2
-}
-
-// T_bTwM5AcoxRu: TypeDefShapeExpr({})
-type T_bTwM5AcoxRu struct {
-}
-
-// T_bWZeLfb2t2d: TypeDefShapeExpr({})
-type T_bWZeLfb2t2d struct {
-}
-
 // User: TypeDefShapeExpr({name: String})
 type User struct {
 	name string

@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-// Void body + ensure infers Result(Void, Error) ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Go `func() error`.
+// Void body + ensure infers Result(Void, Error) -> Go `func() error`.
 // Golden: ../out/result_void_ensure.go
 error NeedFailed {reason: String}
 

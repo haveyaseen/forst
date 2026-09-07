@@ -1,10 +1,6 @@
 package main
 
 import strconv "strconv"
-// T_Ngzq1ErerT: TypeDefShapeExpr({value: Value(42)})
-type T_Ngzq1ErerT struct {
-	value int
-}
 
 func getValue[T any](b struct {
 	value T

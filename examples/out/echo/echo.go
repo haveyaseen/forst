@@ -4,7 +4,6 @@ type EchoRequest struct {
 	message string
 }
 
-// T_LbdM2TnbF11: TypeDefShapeExpr({echo: Value(Variable(input.message)), timestamp: Value(1234567890)})
 type T_LbdM2TnbF11 struct {
 	echo      string
 	timestamp int

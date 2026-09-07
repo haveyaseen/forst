@@ -1,9 +1,6 @@
 package main
 
 import errors "errors"
-// T_H4c2uQ34ZJV: TypeDefShapeExpr({})
-type T_H4c2uQ34ZJV struct {
-}
 
 func accept[T any](r T, _ error) bool {
 	return true

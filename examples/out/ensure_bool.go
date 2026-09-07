@@ -10,14 +10,6 @@ type FlagFail struct {
 	reason string
 }
 
-// T_CQ83zP8NNan: TypeDefShapeExpr({})
-type T_CQ83zP8NNan struct {
-}
-
-// T_iwuP93YjfQW: TypeDefShapeExpr({})
-type T_iwuP93YjfQW struct {
-}
-
 func (e FlagFail) Error() string {
 	return "error"
 }

@@ -6,14 +6,6 @@ import (
 	utf8 "unicode/utf8"
 )
 
-// T_EzZKiw9FNu2: TypeDefShapeExpr({})
-type T_EzZKiw9FNu2 struct {
-}
-
-// T_Saiim6wHvrR: TypeDefShapeExpr({})
-type T_Saiim6wHvrR struct {
-}
-
 func checkConditions() (int, error) {
 	err := mustBeARealName("John")
 	if err != nil {

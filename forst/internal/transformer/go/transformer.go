@@ -121,6 +121,15 @@ func (t *Transformer) TransformForstFileToGo(nodes []ast.Node) (*goast.File, err
 			if t.shouldOmitGoPackageType(name) {
 				continue
 			}
+			// Hash-based structural types are emitted only when referenced
+			// (ensureAllReferencedTypesEmitted / use-site defineShapeType).
+			if t.TypeChecker.IsHashBasedIdent(name) {
+				t.log.WithFields(logrus.Fields{
+					"typeIdent": name,
+					"function":  "TransformForstFileToGo",
+				}).Debug("Skipping unused hash-based type in Defs dump")
+				continue
+			}
 			def := t.TypeChecker.Defs[name]
 			switch def := def.(type) {
 			case ast.TypeDefNode:
@@ -349,107 +358,65 @@ func (t *Transformer) isTestFunction() bool {
 	return t.isGoTestFunction(fn)
 }
 
-// ensureAllReferencedTypesEmitted ensures that all types referenced in the generated code are properly emitted
+// ensureAllReferencedTypesEmitted ensures hash-based (and other) types that appear
+// in already-generated Go are emitted. It does not dump every Defs entry.
 func (t *Transformer) ensureAllReferencedTypesEmitted() error {
 	t.log.Debug("Starting ensureAllReferencedTypesEmitted")
 
-	// Track which types we've already processed to avoid infinite recursion
 	processed := make(map[ast.TypeIdent]bool)
-
-	// First, recursively emit all referenced types from TypeChecker.Defs
-	// Sort type definitions for deterministic emission order
-	typeDefs := make([]struct {
-		ident ast.TypeIdent
-		def   ast.Node
-	}, 0, len(t.TypeChecker.Defs))
-
-	for typeIdent, def := range t.TypeChecker.Defs {
-		typeDefs = append(typeDefs, struct {
-			ident ast.TypeIdent
-			def   ast.Node
-		}{typeIdent, def})
-	}
-
-	// Sort by type identifier for deterministic order
-	sort.Slice(typeDefs, func(i, j int) bool {
-		return string(typeDefs[i].ident) < string(typeDefs[j].ident)
-	})
-
-	for _, typeDef := range typeDefs {
-		if processed[typeDef.ident] {
-			continue
-		}
-		processed[typeDef.ident] = true
-
-		// Emit the type definition
-		if err := t.emitTypeAndReferencedTypes(typeDef.ident, typeDef.def, processed); err != nil {
-			return fmt.Errorf("failed to emit type definition %s: %w", typeDef.ident, err)
-		}
-	}
-
-	// Then, recursively emit all referenced types from the generated code
 	if err := t.scanAndEmitReferencedTypes(processed); err != nil {
 		return fmt.Errorf("failed to scan and emit referenced types: %w", err)
 	}
-
 	return nil
 }
 
-// scanAndEmitReferencedTypes scans all generated code for referenced types and ensures they are emitted
+// scanAndEmitReferencedTypes walks generated types and functions (including
+// bodies and receivers) and emits any Forst hash types they reference.
 func (t *Transformer) scanAndEmitReferencedTypes(processed map[ast.TypeIdent]bool) error {
 	t.log.Debug("Scanning generated code for referenced types")
 
-	// Scan all generated types for field types
 	for _, typeDecl := range t.Output.types {
-		if len(typeDecl.Specs) > 0 {
-			if spec, ok := typeDecl.Specs[0].(*goast.TypeSpec); ok {
-				if structType, ok := spec.Type.(*goast.StructType); ok {
-					if structType.Fields != nil {
-						for _, field := range structType.Fields.List {
-							if field.Type != nil {
-								if err := t.ensureTypeEmittedFromGoType(field.Type, processed); err != nil {
-									return fmt.Errorf("failed to ensure field type emitted: %w", err)
-								}
-							}
-						}
-					}
-				}
-			}
+		if err := t.scanGoNodeForReferencedTypes(typeDecl, processed); err != nil {
+			return err
 		}
 	}
-
-	// Scan all generated functions for parameter and return types
 	for _, funcDecl := range t.Output.functions {
-		if funcDecl.Type != nil {
-			// Scan parameter types
-			if funcDecl.Type.Params != nil {
-				for _, param := range funcDecl.Type.Params.List {
-					if param.Type != nil {
-						if err := t.ensureTypeEmittedFromGoType(param.Type, processed); err != nil {
-							return fmt.Errorf("failed to ensure parameter type emitted: %w", err)
-						}
-					}
-				}
-			}
-			// Scan return types
-			if funcDecl.Type.Results != nil {
-				for _, result := range funcDecl.Type.Results.List {
-					if result.Type != nil {
-						if err := t.ensureTypeEmittedFromGoType(result.Type, processed); err != nil {
-							return fmt.Errorf("failed to ensure return type emitted: %w", err)
-						}
-					}
-				}
-			}
+		if err := t.scanGoNodeForReferencedTypes(funcDecl, processed); err != nil {
+			return err
 		}
 	}
-
 	return nil
+}
+
+// scanGoNodeForReferencedTypes walks a Go AST fragment and emits hash-based
+// Forst types named by identifiers (including composite-literal type names).
+func (t *Transformer) scanGoNodeForReferencedTypes(node goast.Node, processed map[ast.TypeIdent]bool) error {
+	if node == nil {
+		return nil
+	}
+	var walkErr error
+	goast.Inspect(node, func(n goast.Node) bool {
+		if walkErr != nil || n == nil {
+			return false
+		}
+		ident, ok := n.(*goast.Ident)
+		if !ok {
+			return true
+		}
+		if err := t.ensureTypeEmittedFromGoType(ident, processed); err != nil {
+			walkErr = err
+			return false
+		}
+		return true
+	})
+	return walkErr
 }
 
 // ensureTypeEmittedFromGoType ensures that a Go type is properly emitted if it represents a Forst type
 func (t *Transformer) ensureTypeEmittedFromGoType(goType goast.Expr, processed map[ast.TypeIdent]bool) error {
-	// Add debug log for the type being checked
+	if goType == nil {
+		return nil
+	}
 	t.log.WithFields(logrus.Fields{
 		"function": "ensureTypeEmittedFromGoType",
 		"goType":   fmt.Sprintf("%#v", goType),
@@ -457,56 +424,58 @@ func (t *Transformer) ensureTypeEmittedFromGoType(goType goast.Expr, processed m
 
 	switch expr := goType.(type) {
 	case *goast.Ident:
-		// Check if this is a hash-based type name (starts with T_)
-		if strings.HasPrefix(expr.Name, "T_") {
-			typeIdent := ast.TypeIdent(expr.Name)
-			if !processed[typeIdent] {
-				t.log.WithFields(logrus.Fields{
-					"function": "ensureTypeEmittedFromGoType",
-					"type":     expr.Name,
-				}).Debug("[DEBUG] Found hash-based type in generated code that needs emission")
-				// Try to find this type in Defs
-				if def, exists := t.TypeChecker.Defs[typeIdent]; exists {
-					if err := t.emitTypeAndReferencedTypes(typeIdent, def, processed); err != nil {
-						return fmt.Errorf("failed to emit referenced type %s: %w", typeIdent, err)
-					}
-				} else {
-					t.log.WithFields(logrus.Fields{
-						"function": "ensureTypeEmittedFromGoType",
-						"type":     expr.Name,
-					}).Debug("[DEBUG] Hash-based type found in generated code but not in Defs, creating minimal definition")
-					// Create a minimal type definition to ensure emission
-					minimalDef := ast.TypeDefNode{
-						Ident: typeIdent,
-						Expr: ast.TypeDefAssertionExpr{
-							Assertion: &ast.AssertionNode{
-								BaseType: func() *ast.TypeIdent { t := ast.TypeString; return &t }(),
-								Constraints: []ast.ConstraintNode{{
-									Name: "Value",
-									Args: []ast.ConstraintArgumentNode{{
-										Value: func() *ast.ValueNode {
-											v := ast.ValueNode(ast.StringLiteralNode{Value: "placeholder"})
-											return &v
-										}(),
-									}},
-								}},
-							},
-						},
-					}
-					if err := t.emitTypeAndReferencedTypes(typeIdent, minimalDef, processed); err != nil {
-						return fmt.Errorf("failed to emit minimal type definition for %s: %w", typeIdent, err)
-					}
-				}
+		typeIdent := ast.TypeIdent(expr.Name)
+		// Prefer IsHashBasedIdent over a raw T_ prefix (users may name type T_Foo).
+		isHash := t.TypeChecker != nil && t.TypeChecker.IsHashBasedIdent(typeIdent)
+		looksLikeHash := strings.HasPrefix(expr.Name, "T_")
+		if !isHash && !looksLikeHash {
+			return nil
+		}
+		if processed[typeIdent] {
+			return nil
+		}
+		t.log.WithFields(logrus.Fields{
+			"function": "ensureTypeEmittedFromGoType",
+			"type":     expr.Name,
+		}).Debug("[DEBUG] Found hash-based type in generated code that needs emission")
+		if def, exists := t.TypeChecker.Defs[typeIdent]; exists {
+			if err := t.emitTypeAndReferencedTypes(typeIdent, def, processed); err != nil {
+				return fmt.Errorf("failed to emit referenced type %s: %w", typeIdent, err)
 			}
+			return nil
+		}
+		if !looksLikeHash {
+			return nil
+		}
+		t.log.WithFields(logrus.Fields{
+			"function": "ensureTypeEmittedFromGoType",
+			"type":     expr.Name,
+		}).Debug("[DEBUG] Hash-based type found in generated code but not in Defs, creating minimal definition")
+		minimalDef := ast.TypeDefNode{
+			Ident: typeIdent,
+			Expr: ast.TypeDefAssertionExpr{
+				Assertion: &ast.AssertionNode{
+					BaseType: func() *ast.TypeIdent { t := ast.TypeString; return &t }(),
+					Constraints: []ast.ConstraintNode{{
+						Name: "Value",
+						Args: []ast.ConstraintArgumentNode{{
+							Value: func() *ast.ValueNode {
+								v := ast.ValueNode(ast.StringLiteralNode{Value: "placeholder"})
+								return &v
+							}(),
+						}},
+					}},
+				},
+			},
+		}
+		if err := t.emitTypeAndReferencedTypes(typeIdent, minimalDef, processed); err != nil {
+			return fmt.Errorf("failed to emit minimal type definition for %s: %w", typeIdent, err)
 		}
 	case *goast.StarExpr:
-		// Handle pointer types recursively
 		return t.ensureTypeEmittedFromGoType(expr.X, processed)
 	case *goast.ArrayType:
-		// Handle array types recursively
 		return t.ensureTypeEmittedFromGoType(expr.Elt, processed)
 	case *goast.MapType:
-		// Handle map types recursively
 		if err := t.ensureTypeEmittedFromGoType(expr.Key, processed); err != nil {
 			return err
 		}

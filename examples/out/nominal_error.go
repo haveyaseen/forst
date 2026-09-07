@@ -10,10 +10,6 @@ type NotPositive struct {
 	message string
 }
 
-// T_H4c2uQ34ZJV: TypeDefShapeExpr({})
-type T_H4c2uQ34ZJV struct {
-}
-
 func (e NotPositive) Error() string {
 	return "error"
 }

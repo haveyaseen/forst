@@ -25,8 +25,14 @@ func (t *Transformer) transformEnsureCondition(ensure *ast.EnsureNode) ([]goast.
 	}
 
 	result, handled, err = t.handleTypeGuardCall(ensure, varType)
-	if err != nil || handled {
-		return result, err
+	if err != nil {
+		return nil, err
+	}
+	if handled {
+		if len(result) == 0 {
+			return nil, fmt.Errorf("type guard ensure produced no condition to emit")
+		}
+		return result, nil
 	}
 
 	result, handled, err = t.handleAssertionIR(ensure, varType)
@@ -100,11 +106,11 @@ func (t *Transformer) handleTypeGuardCall(ensure *ast.EnsureNode, varType ast.Ty
 		typeGuardDef, err := t.lookupTypeGuardNode(typeGuardName)
 		if err != nil {
 			t.log.Debugf("[transformEnsureCondition] Type guard lookup failed: %v", err)
-			return nil, true, nil // Nothing to emit, but was handled
+			return nil, false, nil // fall through to other ensure emit paths
 		}
 		if typeGuardDef == nil {
 			t.log.Debugf("[transformEnsureCondition] Type guard not found: %s", typeGuardName)
-			return nil, true, nil // Nothing to emit, but was handled
+			return nil, false, nil
 		}
 
 		t.log.Debugf("[transformEnsureCondition] Type guard found: %s", typeGuardName)
@@ -126,7 +132,8 @@ func (t *Transformer) handleTypeGuardCall(ensure *ast.EnsureNode, varType ast.Ty
 			}
 			return []goast.Stmt{&goast.ExprStmt{X: callExpr}}, true, nil
 		}
-		return nil, true, nil // Incompatible, skip emitting
+		// Incompatible with this guard — try other ensure lowering paths.
+		return nil, false, nil
 	}
 	return nil, false, nil
 }

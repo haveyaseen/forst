@@ -126,7 +126,7 @@ func TestCodegen_nodeWrapperUsesIndexParamTypesForFloatArg(t *testing.T) {
 import "./legacy/payment" js
 import "strconv"
 
-func echo(n Float): String {
+func echo(n Float): Result(String, Error) {
 	res := payment.concurrentEcho(n)
 	ensure res is Ok()
 	return strconv.FormatFloat(res.echo, 'f', 0, 64)
@@ -154,7 +154,7 @@ func TestCodegen_blockingForInOverAsyncIterator(t *testing.T) {
 	src := `package main
 import "./legacy/events" js
 
-func drain(userId String): Void {
+func drain(userId String): Result(Void, Error) {
 	seq := events.subscribe(userId)
 	ensure seq is Ok()
 	for _, evt := range seq {

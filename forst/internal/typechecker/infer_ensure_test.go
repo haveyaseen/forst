@@ -59,7 +59,7 @@ func TestInferEnsureType_validatesConstraintsLikeBinaryIs(t *testing.T) {
 		}
 	})
 
-	t.Run("Present_requires_pointer", func(t *testing.T) {
+	t.Run("Present_rejects_non_nilable", func(t *testing.T) {
 		tc := New(log, false)
 		fn := ast.FunctionNode{Ident: ast.Ident{ID: "f"}, Body: []ast.Node{}}
 		tc.scopeStack.pushScope(fn)
@@ -75,7 +75,50 @@ func TestInferEnsureType_validatesConstraintsLikeBinaryIs(t *testing.T) {
 		}
 		_, err := tc.inferEnsureType(ensure)
 		if err == nil {
-			t.Fatal("expected error: Present on non-pointer")
+			t.Fatal("expected error: Present on non-nilable")
+		}
+	})
+
+	t.Run("Present_allows_map", func(t *testing.T) {
+		tc := New(log, false)
+		fn := ast.FunctionNode{Ident: ast.Ident{ID: "f"}, Body: []ast.Node{}}
+		tc.scopeStack.pushScope(fn)
+		mapTy := ast.TypeNode{Ident: ast.TypeMap, TypeParams: []ast.TypeNode{
+			{Ident: ast.TypeString},
+			{Ident: ast.TypeInt},
+		}}
+		tc.CurrentScope().RegisterSymbol(ast.Identifier("m"), []ast.TypeNode{mapTy}, SymbolVariable)
+
+		ensure := ast.EnsureNode{
+			Variable: ast.VariableNode{Ident: ast.Ident{ID: "m"}},
+			Assertion: ast.AssertionNode{
+				Constraints: []ast.ConstraintNode{
+					{Name: "Present", Args: []ast.ConstraintArgumentNode{}},
+				},
+			},
+		}
+		if _, err := tc.inferEnsureType(ensure); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("Present_allows_array", func(t *testing.T) {
+		tc := New(log, false)
+		fn := ast.FunctionNode{Ident: ast.Ident{ID: "f"}, Body: []ast.Node{}}
+		tc.scopeStack.pushScope(fn)
+		arrTy := ast.TypeNode{Ident: ast.TypeArray, TypeParams: []ast.TypeNode{{Ident: ast.TypeInt}}}
+		tc.CurrentScope().RegisterSymbol(ast.Identifier("xs"), []ast.TypeNode{arrTy}, SymbolVariable)
+
+		ensure := ast.EnsureNode{
+			Variable: ast.VariableNode{Ident: ast.Ident{ID: "xs"}},
+			Assertion: ast.AssertionNode{
+				Constraints: []ast.ConstraintNode{
+					{Name: "Present", Args: []ast.ConstraintArgumentNode{}},
+				},
+			},
+		}
+		if _, err := tc.inferEnsureType(ensure); err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 

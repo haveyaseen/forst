@@ -129,13 +129,13 @@ func MarkdownForKeywordToken(t ast.TokenIdent) string {
 		return keywordDoc("ensure", strings.Join([]string{
 			"Runtime check: if the assertion fails, execution takes the failure path (`else <error>` or a failure block). When the check passes, types can narrow for the rest of the function.",
 			"",
-			"`or` joins assertion alternatives on one place (`ensure x is A() or B() else E()`). Typed failure uses `else`, not `or`.",
+			"`or` joins assertion alternatives on one place (`ensure x is A() or B() else E{}`). Typed failure uses `else`, not `or`.",
 			"",
 			"**Example**",
 			"",
 			forstBlock(
 				"func use(s: String): Result(Void, Error) {",
-				"  ensure s is Min(1) else TooShort(\"empty\")",
+				"  ensure s is Min(1) else TooShort{message: \"empty\"}",
 				"  // here `s` is known non-empty for the compiler",
 				"}",
 			),
@@ -153,12 +153,12 @@ func MarkdownForKeywordToken(t ast.TokenIdent) string {
 				"  // success branch",
 				"}",
 				"",
-				"ensure n is Max(100) else TooBig()",
+				"ensure n is Max(100) else TooBig{}",
 			),
 		}, "\n"))
 	case ast.TokenOr:
 		return keywordDoc("or", strings.Join([]string{
-			"Joins assertion constraint chains on one place: `ensure x is A() or B() else E()`. Not typed failure and not boolean `||`.",
+			"Joins assertion constraint chains on one place: `ensure x is A() or B() else E{}`. Not typed failure and not boolean `||`.",
 			"",
 			"For typed failure after `ensure`, use `else`. For boolean OR in expressions, use `||`.",
 		}, "\n"))
@@ -192,7 +192,7 @@ func MarkdownForKeywordToken(t ast.TokenIdent) string {
 			"**Examples**",
 			"",
 			forstBlock(
-				"ensure password is Strong() or Passkey() else InvalidCredential()",
+				"ensure password is Strong() or Passkey() else InvalidCredential{}",
 				"",
 				"if cond { }",
 				"else { }",
@@ -354,7 +354,7 @@ func MarkdownForKeywordToken(t ast.TokenIdent) string {
 		}, "\n"))
 	case ast.TokenLogicalNot:
 		return keywordDoc("!", strings.Join([]string{
-			"Inverts a boolean. Often used with `ensure`: `ensure !err else { ... }` runs the block when `err` is truthy (for example non-nil error).",
+			"Inverts a boolean. Often used with `ensure`: `ensure !err` checks that an `Error` is nil. For a `Result`, prefer `ensure result`.",
 		}, "\n"))
 	case ast.TokenNil:
 		return keywordDoc("nil", strings.Join([]string{

@@ -66,13 +66,13 @@ Each directory holds one Forst package name. Same-package `.ft` files in **one d
 | **Parameters** | Always annotated: `func f(x OrderInput): Result(String, Error)`. |
 | **Records at call sites** | `placeOrder({ stockKeepingUnit: "A", quantity: 2 })`. |
 | **Constraints on fields** | `String.Min(1).Max(64)`, `Int.Min(1).Max(99)`, `Array(String).NotEmpty()`. Compiler emits boundary checks. |
-| **Runtime checks (`else`)** | `ensure speed is LessThan(100) else TooFast({ ... })`. `else` marks the failure path. |
-| **Assertion alternative (`or`)** | `ensure password is Strong() or Passkey() else InvalidCredential()`. Joins conditions on one value. |
-| **Type targets (`is`)** | `ensure status is TaskStatus else BadStatus()`. Bare name checks named type membership. |
+| **Runtime checks (`else`)** | `ensure speed is LessThan(100) else TooFast{ ... }`. `else` marks the failure path. |
+| **Assertion alternative (`or`)** | `ensure password is Strong() or Passkey() else InvalidCredential{}`. Joins conditions on one value. |
+| **Type targets (`is`)** | `ensure status is TaskStatus else BadStatus{}`. Bare name checks named type membership. |
 | **Refinement stability** | Successful `ensure` refines type facts on following lines until dependent storage is written. |
 | **Optional / errors** | `ensure !err` (or `ensure err is Nil()`) implicitly propagates an `Error`. No `try`/`catch`, no `panic`/`recover`. |
 | **Map lookup** | Returns `Result(V, Error)`. **No comma-ok.** `ensure avail is Ok()` then use `avail`. |
-| **Nominal errors** | `error InsufficientStock { stockKeepingUnit: String, ... }`. Use with `ensure … else InsufficientStock({...})`. |
+| **Nominal errors** | `error InsufficientStock { stockKeepingUnit: String, ... }`. Use with `ensure … else InsufficientStock{...}`. |
 | **Result returns** | `func f(): Result(String, Error) { return Ok("done") }`. Narrow with `ensure x is Ok()`. |
 | **Providers** | `use logger: Logger` inside body. Wire at entry with `with { Logger: prodLogger {} } { handler(input) }`. Params = request data. Providers = host services. |
 

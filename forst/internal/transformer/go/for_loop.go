@@ -66,7 +66,9 @@ func (t *Transformer) transformIfNode(n *ast.IfNode) (goast.Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		body.List = append(body.List, gst)
+		if gst != nil {
+			body.List = append(body.List, gst)
+		}
 	}
 	main := &goast.IfStmt{Init: init, Cond: condExpr, Body: body}
 	cur := main
@@ -89,7 +91,9 @@ func (t *Transformer) transformIfNode(n *ast.IfNode) (goast.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
-			ebody.List = append(ebody.List, gst)
+			if gst != nil {
+				ebody.List = append(ebody.List, gst)
+			}
 		}
 		next := &goast.IfStmt{Cond: ec, Body: ebody}
 		cur.Else = next
@@ -105,7 +109,9 @@ func (t *Transformer) transformIfNode(n *ast.IfNode) (goast.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
-			eb.List = append(eb.List, gst)
+			if gst != nil {
+				eb.List = append(eb.List, gst)
+			}
 		}
 		cur.Else = eb
 	}
@@ -124,7 +130,9 @@ func (t *Transformer) transformForNode(fn *ast.ForNode) (goast.Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		body.List = append(body.List, gst)
+		if gst != nil {
+			body.List = append(body.List, gst)
+		}
 	}
 	var loop goast.Stmt
 	if fn.IsRange {

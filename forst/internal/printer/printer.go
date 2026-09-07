@@ -697,35 +697,52 @@ func (p *printer) printReturn(r ast.ReturnNode) (string, error) {
 
 func (p *printer) printEnsure(e ast.EnsureNode) (string, error) {
 	var b strings.Builder
-	v := string(e.Variable.Ident.ID)
-	if e.Variable.Ident.ID != "" {
-		// Negated ensure !x
-		// Parser stores negation as special assertion; detect by single constraint Nil on error type
-		if len(e.Assertion.Constraints) == 1 && e.Assertion.Constraints[0].Name == "Nil" &&
-			e.Assertion.BaseType != nil && *e.Assertion.BaseType == ast.TypeError {
+	v := ""
+	if e.IsCallSubject() {
+		subj, err := p.printExpr(e.Subject)
+		if err != nil {
+			return "", err
+		}
+		v = subj
+	} else {
+		v = string(e.Variable.Ident.ID)
+	}
+	if v != "" {
+		switch e.Implicit {
+		case ast.EnsureImplicitBang:
 			b.WriteString("ensure !")
 			b.WriteString(v)
-		} else if len(e.Assertion.OrChains) > 0 {
+		case ast.EnsureImplicitBare:
 			b.WriteString("ensure ")
 			b.WriteString(v)
-			b.WriteString("\n")
-			b.WriteString(p.prefix())
-			b.WriteString("    is ")
-			b.WriteString(p.formatAssertionMeet(e.Assertion))
-			for _, alt := range e.Assertion.OrChains {
+		default:
+			// Negated ensure !x after specialization still looks like Nil on Error
+			if len(e.Assertion.Constraints) == 1 && e.Assertion.Constraints[0].Name == "Nil" &&
+				e.Assertion.BaseType != nil && *e.Assertion.BaseType == ast.TypeError {
+				b.WriteString("ensure !")
+				b.WriteString(v)
+			} else if len(e.Assertion.OrChains) > 0 {
+				b.WriteString("ensure ")
+				b.WriteString(v)
 				b.WriteString("\n")
 				b.WriteString(p.prefix())
-				b.WriteString("    or ")
-				b.WriteString(p.formatAssertionMeet(alt))
-			}
-		} else {
-			b.WriteString("ensure ")
-			b.WriteString(v)
-			b.WriteString(" is ")
-			if tt, ok := e.Target.(ast.TypeTarget); ok {
-				b.WriteString(string(tt.Name))
+				b.WriteString("    is ")
+				b.WriteString(p.formatAssertionMeet(e.Assertion))
+				for _, alt := range e.Assertion.OrChains {
+					b.WriteString("\n")
+					b.WriteString(p.prefix())
+					b.WriteString("    or ")
+					b.WriteString(p.formatAssertionMeet(alt))
+				}
 			} else {
-				b.WriteString(p.formatAssertion(e.Assertion))
+				b.WriteString("ensure ")
+				b.WriteString(v)
+				b.WriteString(" is ")
+				if tt, ok := e.Target.(ast.TypeTarget); ok {
+					b.WriteString(string(tt.Name))
+				} else {
+					b.WriteString(p.formatAssertion(e.Assertion))
+				}
 			}
 		}
 	}
@@ -750,6 +767,12 @@ func (p *printer) printEnsure(e ast.EnsureNode) (string, error) {
 			b.WriteByte(')')
 		case ast.EnsureErrorVar:
 			b.WriteString(string(err))
+		case ast.EnsureErrorExpr:
+			s, e2 := p.printExpr(err.Expr)
+			if e2 != nil {
+				return "", e2
+			}
+			b.WriteString(s)
 		default:
 			return "", fmt.Errorf("printer: unknown ensure error %T", err)
 		}

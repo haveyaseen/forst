@@ -92,7 +92,7 @@ the check, the handler can safely read `op.input.name`.
 Guards must be deterministic and fail-closed.
 
 - Every path inside a guard body must evaluate checks cleanly. If an `if` condition in a guard body does not match and has no explicit `else`, the guard fails (evaluates to false).
-- A guard body cannot raise typed failures using `else CustomError()`. Typed failure errors belong at the `ensure` call site, not inside the guard definition.
+- A guard body cannot raise typed failures using `else CustomError{}`. Typed failure errors belong at the `ensure` call site, not inside the guard definition.
 - Assertion `or` (such as `ensure password is Strong() or Passkey()`) is supported [inside a guard](/language/ensure-and-narrowing#accept-alternatives-with-or) to combine acceptable checks.
 
 ## Why a normal function is not enough

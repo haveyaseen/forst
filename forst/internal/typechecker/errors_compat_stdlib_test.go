@@ -90,7 +90,7 @@ import "errors"
 import "io"
 error WrapErr { cause: Error, msg: String }
 func main() {
-  e := WrapErr({ cause: io.EOF, msg: "eof" })
+  e := WrapErr{ cause: io.EOF, msg: "eof" }
   ok := errors.Is(e, io.EOF)
   println(ok)
 }

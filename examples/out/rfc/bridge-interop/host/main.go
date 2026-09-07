@@ -1,8 +1,10 @@
 package main
 
-import "strconv"
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+	"strconv"
+)
 
 func main() {
 	first, firstErr := forst_bridge_callsync_legacy_counter_js_inc()

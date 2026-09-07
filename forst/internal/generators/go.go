@@ -8,24 +8,78 @@ import (
 	"go/format"
 	"go/token"
 	"sort"
+	"strings"
 )
 
 var formatGoNode = format.Node
 
-// GenerateGoCode generates Go code from a Go AST with consistent ordering
+// GenerateGoCode generates Go code from a Go AST with consistent ordering.
+//
+// Pipeline (each step earns its keep):
+//  1. Sort decls/fields and merge imports — gofmt never reorders these.
+//  2. format.Node — AST → text (synthetic ASTs have no FileSet gaps).
+//  3. ensureBlankLinesBetweenTopLevelDecls — format.Source preserves blank
+//     lines between same-kind decls but does not insert them.
+//  4. format.Source — final gofmt so editor-on-save is a no-op (package blank,
+//     import spacing, future gofmt rules). Cheap on small emit files.
 func GenerateGoCode(goFile *goast.File) (string, error) {
 	var buf bytes.Buffer
 	fset := token.NewFileSet()
 
-	// Sort imports and ensure consistent declaration ordering
-	goast.SortImports(fset, goFile)
 	sortDeclarations(goFile)
 	sortStructFields(goFile)
 
 	if err := formatGoNode(&buf, fset, goFile); err != nil {
 		return "", fmt.Errorf("failed to format Go code: %w", err)
 	}
-	return buf.String(), nil
+	spaced := ensureBlankLinesBetweenTopLevelDecls(buf.String())
+	formatted, err := format.Source([]byte(spaced))
+	if err != nil {
+		return "", fmt.Errorf("failed to gofmt generated code: %w", err)
+	}
+	return string(formatted), nil
+}
+
+// ensureBlankLinesBetweenTopLevelDecls inserts blank lines between consecutive
+// top-level declarations (types, funcs, doc comments). go/format omits them when
+// FileSet positions have no source gaps (typical for synthetic ASTs).
+func ensureBlankLinesBetweenTopLevelDecls(src string) string {
+	lines := strings.Split(src, "\n")
+	if len(lines) < 2 {
+		return src
+	}
+	out := make([]string, 0, len(lines)+8)
+	for i, line := range lines {
+		out = append(out, line)
+		if i+1 >= len(lines) {
+			break
+		}
+		next := lines[i+1]
+		if next == "" {
+			continue
+		}
+		if isTopLevelCloseLine(line) && isTopLevelStartLine(next) {
+			out = append(out, "")
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+func isTopLevelCloseLine(line string) bool {
+	return line == "}" || line == ")"
+}
+
+func isTopLevelStartLine(line string) bool {
+	switch {
+	case strings.HasPrefix(line, "func "),
+		strings.HasPrefix(line, "type "),
+		strings.HasPrefix(line, "const "),
+		strings.HasPrefix(line, "var "),
+		strings.HasPrefix(line, "//"):
+		return true
+	default:
+		return false
+	}
 }
 
 // sortDeclarations sorts declarations in a Go file for consistent ordering
@@ -51,6 +105,8 @@ func sortDeclarations(file *goast.File) {
 		}
 	}
 
+	imports = mergeImportDecls(imports)
+
 	// Sort each group by name
 	sortDeclsByName := func(decls []goast.Decl) {
 		sort.Slice(decls, func(i, j int) bool {
@@ -58,7 +114,6 @@ func sortDeclarations(file *goast.File) {
 		})
 	}
 
-	sortDeclsByName(imports)
 	sortDeclsByName(types)
 	sortDeclsByName(funcs)
 	sortDeclsByName(vars)
@@ -71,6 +126,61 @@ func sortDeclarations(file *goast.File) {
 	file.Decls = append(file.Decls, vars...)
 	file.Decls = append(file.Decls, types...)
 	file.Decls = append(file.Decls, funcs...)
+
+	// Keep File.Imports in sync with the merged import block.
+	file.Imports = nil
+	for _, decl := range imports {
+		gd, ok := decl.(*goast.GenDecl)
+		if !ok || gd.Tok != token.IMPORT {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			if is, ok := spec.(*goast.ImportSpec); ok {
+				file.Imports = append(file.Imports, is)
+			}
+		}
+	}
+}
+
+// mergeImportDecls collapses one-or-many IMPORT GenDecls into a single decl.
+// Two or more specs use a parenthesized import block; format.Node then sorts
+// the specs by path (no need for a separate sort pass).
+func mergeImportDecls(imports []goast.Decl) []goast.Decl {
+	if len(imports) == 0 {
+		return imports
+	}
+	var specs []goast.Spec
+	seen := map[string]bool{}
+	for _, decl := range imports {
+		gd, ok := decl.(*goast.GenDecl)
+		if !ok || gd.Tok != token.IMPORT {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			is, ok := spec.(*goast.ImportSpec)
+			if !ok || is.Path == nil {
+				continue
+			}
+			key := is.Path.Value
+			if is.Name != nil {
+				key = is.Name.Name + "\x00" + key
+			}
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			specs = append(specs, is)
+		}
+	}
+	if len(specs) == 0 {
+		return nil
+	}
+	gd := &goast.GenDecl{Tok: token.IMPORT, Specs: specs}
+	if len(specs) > 1 {
+		gd.Lparen = 1
+		gd.Rparen = 1
+	}
+	return []goast.Decl{gd}
 }
 
 // getDeclName gets the name of a declaration for sorting

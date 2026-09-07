@@ -22,9 +22,16 @@ func (tc *TypeChecker) markHashBasedIdent(ident ast.TypeIdent) {
 	tc.hashBasedIdents[ident] = struct{}{}
 }
 
-func (tc *TypeChecker) isHashBasedIdent(ident ast.TypeIdent) bool {
+// IsHashBasedIdent reports whether ident was registered as a compiler-invented
+// structural/hash type (via RegisterHashBasedType / inferShapeType), not a
+// user-named typedef that happens to start with "T_".
+func (tc *TypeChecker) IsHashBasedIdent(ident ast.TypeIdent) bool {
 	_, ok := tc.hashBasedIdents[ident]
 	return ok
+}
+
+func (tc *TypeChecker) isHashBasedIdent(ident ast.TypeIdent) bool {
+	return tc.IsHashBasedIdent(ident)
 }
 
 func (tc *TypeChecker) setDef(ident ast.TypeIdent, def ast.Node) {

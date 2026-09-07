@@ -10,19 +10,73 @@ import EnsureCatalog from "/snippets/ensure-catalog.mdx";
 import EnsurePlaceOrderOk from "/snippets/ensure-place-order-ok.mdx";
 import EnsureIfOk from "/snippets/ensure-if-ok.mdx";
 
-Use `ensure` when your program should continue only after a value passes a
-check. A failed check returns an error or exits early. A successful check
-refines the value's type, which Forst reuses on following lines until dependent
-data changes.
+Use `ensure` when the next lines only make sense if a value is already valid.
+A failed check returns an error or exits the process. A successful check
+refines the value's type so later code can rely on that fact.
 
-This keeps validation beside the code that depends on it. Use `if x is ...`
-when you want to choose a branch instead of returning early.
+Use `if x is ...` when both outcomes belong in the same function.
 
-## Stop when a check fails
+## Check a flag or a Result
 
-Write `ensure value is Condition()` to check a value. Add `else` when you want to
-return a specific error. This `drive` function rejects a speed that is too
-high, then updates a shared `position`.
+For common cases you can write `ensure` without spelling a condition. The
+subject type chooses the check.
+
+This function continues only when `ok` is true:
+
+```ft
+error FlagFailed { reason: String }
+
+func checkFlag(ok Bool) {
+	ensure ok
+		else FlagFailed{ reason: "flag was false" }
+	return "ok"
+}
+```
+
+That is the same as `ensure ok is True()`. Use `ensure !b` when the value must
+be false.
+
+This caller continues only when `need` succeeded. A function that only
+uses `ensure` (no success value) returns `Result(Void, Error)`. Check the
+call directly when you do not need a success value:
+
+```ft
+error NeedFailed { reason: String }
+
+func need(ok Bool) {
+	ensure ok
+		else NeedFailed{ reason: "need failed" }
+}
+
+func run(ok Bool) {
+	ensure need(ok)
+	return 1
+}
+```
+
+Bare `ensure need(ok)` means `ensure need(ok) is Ok()`. On failure, the
+enclosing function returns the error.
+
+You can also write the short form for a valued Result. Bind the call when
+you need the success value afterward:
+
+```ft
+x := placeOrder(input)
+ensure x
+// x is the success value here
+```
+
+That is the same as `ensure x is Ok()`. On failure, the enclosing function
+returns `x`'s error (except in `main` and Go tests).
+
+## Write an explicit condition with `is`
+
+Use `is` when you need a specific constraint. Write
+`ensure value is Condition()` and add `else` when failure should return a
+named error.
+
+This `drive` function rejects a speed that is too high, then updates a shared
+`position`:
 
 <EnsureSpeed />
 
@@ -34,20 +88,111 @@ When the check fails, `drive` returns `TooFast`. `position` stays unchanged.
   errors such as `TooFast`.
 </Note>
 
-Forst provides built in conditions such as `LessThan`, `Min`, `Present`, and `Ok`.
-The `is` operator runs the check and refines the value's type after success.
+Built-in conditions include `LessThan`, `Min`, `Present`, and `Ok`. After a
+successful `is` check, Forst narrows the value's type for the following lines.
 See the [full list of constraints](/language/shapes-and-constraints#reference).
 
 ## Choose the failure path with `else`
 
-Use `else` after a check when failure should return a specific error.
+Use `else` when failure should return a specific error:
 
 ```ft
-ensure speed is LessThan(100) else TooFast()
+ensure speed is LessThan(100) else TooFast{}
 ```
 
-The expression after `else` runs only when the check fails. It can return a
-named error constructor or an error variable. `else` marks the failure path.
+The expression after `else` runs only when the check fails. It can be a named
+error constructor, an error variable, a method call, or a shape literal:
+
+```ft
+ensure ok is True()
+	else p.errMsg("bad")
+
+ensure ok is True()
+	else E{ message: "bad " + kw }
+```
+
+## Short forms at a glance
+
+When the subject type is known, bare `ensure` and `ensure !` expand to these
+checks. `else` stays optional in every case.
+
+| Subject | Form | Meaning |
+| --- | --- | --- |
+| `Bool` | `ensure b` | `ensure b is True()` |
+| `Bool` | `ensure !b` | `ensure b is False()` |
+| `Result(S, F)` | `ensure x` / `ensure f()` | `ensure … is Ok()` |
+| `*T`, `Map`, `Array` | `ensure x` | `ensure x is Present()` (non-nil) |
+| `Error` / nilable | `ensure !err` | `ensure err is Nil()` |
+
+Use a call subject (`ensure need(ok)`) when you only need the check. Bind the
+Result to a name when later lines need the success value, or when an `else`
+block reads that value.
+
+Other types still need an explicit `is` constraint. Bare `ensure err` on an
+`Error` is rejected. Use `ensure !err` when success means “no error.”
+
+`Present` and `Nil` on maps and arrays mean nilness, not emptiness. An empty
+`map` or `[]` still passes `Present`. Use `is NotEmpty()` or `is Min(n)` for
+length.
+
+Do not write `ensure !x` on a `Result`. Use `ensure x`, `ensure x is Ok()`, or
+`ensure x is Err()` instead. Bang is for Bool false and Error/nilable absence.
+
+Do not mix `!` with `is`. Write `ensure x is …` or bare `ensure !x`.
+`ensure !x is …` is a syntax error.
+
+## Check for missing or present values
+
+Use `Nil()` when a value must be absent. That works for pointers, maps,
+arrays, and `Error`.
+
+<EnsureNil />
+
+`claim` continues only when `slot` is nil, then stores `value` there. `open`
+checks that `claim` succeeded, then returns the occupied value.
+
+When the checked value has type `Error`, a failed check implicitly returns
+that error from a non-`main` function. Both forms behave like
+`ensure !err else err` and lower to the same Go `if err != nil { return err }`
+check.
+
+A bare `Nil()` check on a pointer, map, or array does not auto-propagate,
+because the value is not itself an error. Add an explicit `else` when you need
+a typed failure.
+
+Bare `ensure x` on a pointer, map, or array means `is Present()` (non-nil).
+Full optional value types such as `T | Nil` are still
+[planned](/resources/roadmap).
+
+## Use a successful Result value
+
+Map lookups and other fallible operations return `Result(V, Error)`. Check
+success before you use the value.
+
+<EnsureCatalog />
+
+After `ensure avail is Ok()` (or bare `ensure avail`), `avail` has the value
+type stored in the map. The next check can safely compare the requested
+quantity with it.
+
+The same pattern works for function calls that return a `Result`:
+
+<EnsurePlaceOrderOk />
+
+Bare `ensure x` (or `ensure x is Ok()`) with no `else` promotes the enclosing
+function to `Result`, except in `main` and Go tests, and returns `x`'s error
+slot on failure. That matches `ensure !err` on an `Error`. Writing `else x`
+remains valid and redundant. `ensure x is Err()` does not implicit-propagate.
+There is no inner error to forward when that check fails.
+
+## Choose a branch after a check
+
+Use `if x is ...` when both outcomes belong in the current function. Forst
+refines the value inside the matching branch.
+
+<EnsureIfOk />
+
+The original type remains available outside the branch.
 
 ## Accept alternatives with `or`
 
@@ -57,28 +202,30 @@ Use `or` to join several acceptable checks on the same value.
 ensure password
     is Strong()
     or Passkey()
-    else InvalidCredential()
+    else InvalidCredential{}
 ```
 
-This check passes when `password` satisfies either `Strong()` or `Passkey()`. If both fail, `ensure` executes the `else` path.
+The check passes when `password` satisfies either `Strong()` or `Passkey()`.
+If both fail, `ensure` runs the `else` path.
 
 ### Accept specific status cases
-
-`or` can list acceptable states or checks for a value when other cases should be rejected.
 
 ```ft
 ensure status
     is Pending()
     or Processing()
     or Retrying()
-    else InvalidStatus()
+    else InvalidStatus{}
 ```
 
-The check continues if `status` matches any listed condition and fails through `else` for any other value.
+The check continues if `status` matches any listed condition. Any other value
+fails through `else`.
 
 ### Combine checks inside type guards
 
-Inside a [type guard](/language/type-guards), `ensure` cannot raise a custom error with `else`. Use `or` to express that any of several conditions satisfies the guard.
+Inside a [type guard](/language/type-guards), `ensure` cannot raise a custom
+error with `else`. Use `or` so any of several conditions can satisfy the
+guard.
 
 ```ft
 is (task Task) Actionable() {
@@ -88,16 +235,22 @@ is (task Task) Actionable() {
 }
 ```
 
-Caller functions can then check `ensure task is Actionable() else InactiveTask()`.
+Callers can then write `ensure task is Actionable() else InactiveTask{}`.
 
 ### Syntax rules for `or`
 
-- Write the value once: write `ensure x` followed by `is A()`, `or B()`, not `ensure x is A() or x is B()`.
-- Chained constraints stay together before `or`. In `ensure name is String.Min(3).Max(32) or UUIDV4()`, the first option checks that the name is 3–32 characters long. The second runs the `UUIDV4()` check.
+- Write the value once: `ensure x` followed by `is A()`, then `or B()`. Do not
+  write `ensure x is A() or x is B()`.
+- Chained constraints stay together before `or`. In
+  `ensure name is String.Min(3).Max(32) or UUIDV4()`, the first option checks
+  that the name is 3–32 characters long. The second runs `UUIDV4()`.
 
 ## Check against a named type
 
-Check membership in a named type by writing its name without parentheses after `is`. This narrows values to defined subsets such as literal unions, and to constrained scalar aliases that have a non-empty Meet chain (dotted constraints) and no `or` alternatives. Aliases that list alternatives with `or` are not valid `ensure x is T` targets.
+Check membership in a named type by writing its name without parentheses after
+`is`. That works for literal unions and for constrained scalar aliases that
+have a dotted constraint chain and no `or` alternatives. Aliases that list
+alternatives with `or` are not valid `ensure x is T` targets.
 
 ```ft
 error InvalidStatus {}
@@ -107,7 +260,7 @@ type ActiveStatus =
     | "processing"
 
 func check(status String) {
-	ensure status is ActiveStatus else InvalidStatus()
+	ensure status is ActiveStatus else InvalidStatus{}
 }
 ```
 
@@ -119,21 +272,25 @@ type HttpPort = Int.Min(1).Max(65535)
 func listen(port HttpPort) {}
 
 func serve(port Int) {
-	ensure port is HttpPort else InvalidPort()
+	ensure port is HttpPort else InvalidPort{}
 	listen(port)
 }
 ```
 
-`ensure port is HttpPort` runs the same checks as `ensure port is Min(1).Max(65535)`, then narrows `port` to `HttpPort` so `listen` can take it. Omit parentheses when checking membership in a named type (`ActiveStatus`, `HttpPort`). Use parentheses when calling assertion functions or type guards (`Strong()`, `Pending()`).
+`ensure port is HttpPort` runs the same checks as
+`ensure port is Min(1).Max(65535)`, then narrows `port` to `HttpPort` so
+`listen` can take it. Omit parentheses for named types. Use parentheses for
+assertion functions and type guards (`Strong()`, `Pending()`).
 
-## Exiting from `main`
+## Exit from `main`
 
 `main` starts the process. A failed `ensure` there ends the process with exit
-status 1. There is no caller to return an error to, so a typed `else` is not allowed.
+status 1. There is no caller to return an error to, so a typed `else` is not
+allowed.
 
-Write `ensure !err` when you only need that exit. Add `else { ... }` when
-you want to log or clean up first. The block runs on failure. The process
-still exits afterward.
+Write `ensure drive(80)` or `ensure result` when you only need that exit. Add
+`else { ... }` when you want to log or clean up first. The block runs on
+failure. The process still exits afterward.
 
 This example calls `drive`, then `stop`. The first check has no block. The
 second prints a line if `stop` fails.
@@ -144,57 +301,11 @@ If `drive` fails, the program writes to stderr and exits. `stop` never runs.
 If `stop` fails, the program prints `failed to stop:` and the error, then
 exits. Nothing after that `ensure` in `main` runs.
 
-## Check for missing values
+## Keep refinements after a successful check
 
-Use `Nil()` when a value must be absent. This works with nilable values such as
-pointers, `Map`, `Array`, and `Error`.
-
-<EnsureNil />
-
-`claim` continues only when `slot` is nil, then stores `value` there. `open`
-then uses `ensure !err`, the short form of `ensure err is Nil()`, and returns
-the occupied value. When the checked value
-has type `Error`, a failed check implicitly returns that error from a non-`main`
-function. In other words, both forms behave like `ensure !err else err` and
-lower to the same Go `if err != nil { return err }` check.
-
-This propagation is specific to errors. A bare `Nil()` check on a pointer, map,
-or array still produces the normal assertion error because the checked value is
-not itself returnable as an error. Add an explicit `else` whenever you want a
-different failure value.
-
-Pointer fields also support
-[`.Present()` and `.Nil()`](/language/shapes-and-constraints). Full optional
-value types such as `T | Nil` are still [planned](/resources/roadmap).
-
-## Use a successful Result value
-
-Map lookups and other operations that may fail return `Result(V, Error)`.
-Check for `Ok()` before using the successful value.
-
-<EnsureCatalog />
-
-After `ensure avail is Ok()`, `avail` has the value type stored in the map. The
-next check can safely compare the requested quantity with it.
-
-Use the same pattern for function calls that return a `Result`.
-
-<EnsurePlaceOrderOk />
-
-## Choose a branch after a check
-
-Use `if x is ...` when both outcomes belong in the current function. Forst
-refines the value inside the matching branch.
-
-<EnsureIfOk />
-
-The original type remains available outside the branch.
-
-## How refinements survive mutation
-
-A successful check establishes a refined fact about a specific storage path. Forst
-remembers that fact on later lines so you do not need to re-validate the value
-before passing it to functions that require it.
+A successful check establishes a fact about a storage path. Forst remembers
+that fact on later lines so you do not need to re-validate before calls that
+require it.
 
 ```ft
 type Order = {
@@ -218,43 +329,41 @@ func ship(order Order.Shippable()) {
 
 ### Establish and reuse a refinement
 
-Check the order once before calling operations that need a valid destination.
-
 ```ft
-ensure order is Shippable() else CannotShip()
+ensure order is Shippable() else CannotShip{}
 ship(order)
 ```
 
 `ship(order)` runs without re-checking `order.address.country`. The compiler
-knows that `order` satisfied `Shippable()` on the earlier line.
+knows that `order` already satisfied `Shippable()`.
 
 ### What invalidates a refinement
 
 Writing to a field that a check depends on invalidates that refinement.
 
 ```ft
-ensure order is Shippable() else CannotShip()
+ensure order is Shippable() else CannotShip{}
 order.address.country = nil
 ship(order) // Error: order no longer satisfies Shippable
 ```
 
-The write `order.address.country = nil` is legal. It invalidates `Shippable`
-because country data was modified. The compiler points out the invalidated check at
-`ship(order)`, showing:
+The write is legal. It drops `Shippable` because country data changed. The
+compiler reports the problem at `ship(order)` with:
 
-- the dropped condition name (`Shippable`);
-- the line where it was established;
-- the write that invalidated it;
-- how to restore it (`ensure order is Shippable()`).
+- the dropped condition name (`Shippable`)
+- the line where it was established
+- the write that invalidated it
+- how to restore it (`ensure order is Shippable()`)
 
-Re-`ensure` the value after changing dependent fields to restore the refinement.
+Re-`ensure` the value after changing dependent fields to restore the
+refinement.
 
 ### What keeps a refinement intact
 
-Writes to unrelated fields leave existing refined facts intact.
+Writes to unrelated fields leave existing facts intact.
 
 ```ft
-ensure order is Shippable() else CannotShip()
+ensure order is Shippable() else CannotShip{}
 order.lastViewedAt = 1700000000
 ship(order) // Still valid: lastViewedAt is not a dependency of Shippable
 ```
@@ -265,15 +374,13 @@ Reading a field never invalidates a refinement.
 
 Assigning `nil` directly to a pointer slot (`order.address = nil`) drops
 presence facts on `address` and its child fields. Writing a field through an
-existing pointer (`order.address.country = "US"`) modifies the pointee value but
-does not clear pointer presence on `address`.
+existing pointer (`order.address.country = "US"`) modifies the pointee value
+but does not clear pointer presence on `address`.
 
 ## Keep checks explicit
 
-Forst keeps validation visible in normal control flow. `ensure` returns an
-error. `if` selects a branch. Values are never silently coerced.
-
-This avoids common problems from other approaches.
+Forst keeps validation in normal control flow. `ensure` returns an error.
+`if` selects a branch. Values are never silently coerced.
 
 | Approach | Drawback |
 | --- | --- |
@@ -283,45 +390,52 @@ This avoids common problems from other approaches.
 
 ## Current limits
 
-`ensure` and narrowing are actively expanding. See the [roadmap](/resources/roadmap).
+`ensure` and narrowing are still expanding. See the
+[roadmap](/resources/roadmap).
 
 ### Control flow joins and loops
 
-A refinement survives a branch split (`if` / `else`) only when it holds on every
-path. Loops assume zero iterations may run, so facts established inside a loop
-body do not leak past the loop unless proven invariant.
+A refinement survives a branch split (`if` / `else`) only when it holds on
+every path. Loops assume zero iterations may run, so facts established inside
+a loop body do not leak past the loop unless proven invariant.
 
 ### Function calls and Go interop
 
-Calling a Forst function that mutates a dependency path invalidates refined facts on that
-path. Calls to untrusted Go packages, `unsafe`, or `reflect` conservatively drop
-facts on reachable mutable arguments, but the call itself remains legal.
+Calling a Forst function that mutates a dependency path invalidates refined
+facts on that path. Calls to untrusted Go packages, `unsafe`, or `reflect`
+conservatively drop facts on reachable mutable arguments. The call itself
+remains legal.
 
 ### Aliases and concurrency
 
 Writing through a pointer alias (`alias := &order; alias.address.country = nil`)
 drops facts on the aliased value. Spawning a goroutine (`go worker(order)`) or
-sending reference bearing data through a channel clears refined facts on shared mutable
-storage. Forst uses no borrow checker, ownership syntax, or runtime version tags.
+sending reference-bearing data through a channel clears refined facts on
+shared mutable storage. Forst uses no borrow checker, ownership syntax, or
+runtime version tags.
 
 ### Map lookups use Result
 
-Forst map lookups return `Result(V, Error)`. Go style comma assignment such as
-`v, ok := m[k]` is unsupported. Use `ensure avail is Ok()` before reading the
-value.
+Forst map lookups return `Result(V, Error)`. Go-style comma assignment such as
+`v, ok := m[k]` is unsupported. Use `ensure avail` or `ensure avail is Ok()`
+before reading the value.
 
 ## Generated Go
 
-Generated Go uses ordinary conditionals and error returns for `ensure`.
-A custom failure after `else` becomes a named Go error type. In `main`, a
-failed check exits the process instead of returning.
+Generated Go uses ordinary conditionals and error returns for `ensure`. A
+custom failure after `else` becomes a named Go error type. In `main`, a failed
+check exits the process instead of returning.
 
 ## Examples
 
-See the ensure and narrowing examples on GitHub
+See the ensure and narrowing examples on GitHub:
 
 * [`examples/in/ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure.ft)
+* [`examples/in/ensure_bool.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure_bool.ft)
+* [`examples/in/ensure_else_method.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure_else_method.ft)
 * [`examples/in/result_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_ensure.ft)
+* [`examples/in/result_void_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_void_ensure.ft)
+* [`examples/in/result_unwrap_propagate.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_unwrap_propagate.ft)
 * [`examples/in/result_if.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_if.ft)
 
 ## Related

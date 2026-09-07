@@ -239,7 +239,9 @@ func (t *Transformer) transformFunction(scopeNode ast.Node, n ast.FunctionNode) 
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform statement: %s", err)
 			}
-			stmts = append(stmts, goStmt)
+			if goStmt != nil {
+				stmts = append(stmts, goStmt)
+			}
 		}
 	}
 
@@ -275,7 +277,10 @@ func (t *Transformer) transformFunction(scopeNode ast.Node, n ast.FunctionNode) 
 	// Make sure that functions return nil if they return an error
 	if !isMainFunc && !typechecker.IsVoidReturnTypes(returnType) && len(returnType) > 0 {
 		lastReturnType := returnType[len(returnType)-1]
-		if lastReturnType.IsError() {
+		needsTrailingNil := lastReturnType.IsError() ||
+			(lastReturnType.IsResultType() && len(lastReturnType.TypeParams) >= 1 &&
+				lastReturnType.TypeParams[0].Ident == ast.TypeVoid)
+		if needsTrailingNil {
 			var lastStmt ast.Node
 			for i := len(n.Body) - 1; i >= 0; i-- {
 				if _, ok := n.Body[i].(ast.CommentNode); ok {

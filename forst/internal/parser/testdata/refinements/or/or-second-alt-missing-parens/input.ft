@@ -3,7 +3,7 @@ package main
 type Error = String
 
 func f(x String, value String, status ActiveStatus): Error {
-    ensure x is A() or B else Error()
+    ensure x is A() or B else Error{}
     return ""
 }
 

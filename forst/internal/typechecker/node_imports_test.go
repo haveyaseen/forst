@@ -210,7 +210,7 @@ func TestNodeImports_checkoutHelperWithEnsureOkReturnString(t *testing.T) {
 	src := `package main
 import "./legacy/payment" js
 
-func checkout(): String {
+func checkout(): Result(String, Error) {
 	result := payment.create(1.0, "usd")
 	ensure result is Ok()
 	return result.id

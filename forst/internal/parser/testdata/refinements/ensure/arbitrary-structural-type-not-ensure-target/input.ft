@@ -69,4 +69,4 @@ type User = {
     name: String
     age: Int
 }
-ensure value is User else InvalidUser()
+ensure value is User else InvalidUser{}

@@ -10,6 +10,7 @@ func classify(n int) string {
 		return "other"
 	}
 }
+
 func fallthroughDemo() string {
 	var out string = ""
 	switch 1 {
@@ -21,12 +22,14 @@ func fallthroughDemo() string {
 	}
 	return out
 }
+
 func main() {
 	println(classify(1))
 	println(classify(5))
 	println(pick(true))
 	println(fallthroughDemo())
 }
+
 func pick(flag bool) string {
 	switch {
 	case flag:

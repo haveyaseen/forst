@@ -32,6 +32,7 @@ func (tc *TypeChecker) inferExpressionVariable(expr ast.Node) ([]ast.TypeNode, b
 			if predDisplay != "" {
 				tc.variableOccurrenceNarrowingPredicateDisplay[k] = predDisplay
 			}
+			tc.recordOccurrenceGoType(e)
 		}
 		return []ast.TypeNode{typ}, true, nil
 	}

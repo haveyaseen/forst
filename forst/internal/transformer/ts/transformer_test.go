@@ -82,7 +82,7 @@ error EmptyMessage { message: String }
 type EchoRequest = { message: String }
 
 func Echo(input EchoRequest): Result(EchoResponse, Error) {
-	ensure input.message is Min(1) else EmptyMessage({ message: "empty" })
+	ensure input.message is Min(1) else EmptyMessage{ message: "empty" }
 	return { echo: input.message, timestamp: 0 }
 }
 

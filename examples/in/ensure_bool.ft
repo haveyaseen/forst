@@ -1,0 +1,27 @@
+package main
+
+import "fmt"
+
+// Bare ensure on Bool is True(); bang is False(). Golden: ../out/ensure_bool.go
+error FlagFail {reason: String}
+
+func checkFlag(ok Bool) {
+	ensure ok
+	    else FlagFail{reason: "flag was false"}
+	return "ok"
+}
+
+func rejectTrue(b Bool) {
+	ensure !b
+	    else FlagFail{reason: "expected false"}
+	return "ok"
+}
+
+func main() {
+	r := checkFlag(true)
+	ensure r is Ok()
+	fmt.Println(r)
+	r2 := rejectTrue(false)
+	ensure r2 is Ok()
+	fmt.Println(r2)
+}

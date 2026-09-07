@@ -1,9 +1,11 @@
 package main
 
-import "fmt"
-import errors "errors"
-import os "os"
-import strconv "strconv"
+import (
+	errors "errors"
+	"fmt"
+	os "os"
+	strconv "strconv"
+)
 
 var errMissingMapKey = errors.New("missing map key")
 

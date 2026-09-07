@@ -45,6 +45,15 @@ func (t *Transformer) transformEnsureStatement(ensureNode ast.EnsureNode, origin
 		return nil, fmt.Errorf("failed to restore ensure statement scope: %s", err)
 	}
 
+	ensureNode, err = t.specializeEnsureForEmit(ensureNode)
+	if err != nil {
+		return nil, err
+	}
+
+	if ensureNode.IsCallSubject() {
+		return t.transformEnsureCallSubject(fn, ensureNode)
+	}
+
 	stmts, err := t.transformEnsureCondition(&ensureNode)
 	if err != nil {
 		return nil, err
@@ -76,7 +85,9 @@ func (t *Transformer) transformEnsureStatement(ensureNode ast.EnsureNode, origin
 			if err != nil {
 				return nil, err
 			}
-			finallyStmts = append(finallyStmts, goStmt)
+			if goStmt != nil {
+				finallyStmts = append(finallyStmts, goStmt)
+			}
 		}
 	}
 
@@ -213,15 +224,21 @@ func (t *Transformer) transformErrorStatement(fn ast.FunctionNode, stmt ast.Ensu
 
 	// Build error return values based on the function's return types
 	// Result(S, Error) is one Forst return type but lowers to (S, error) in Go.
+	// Result(Void, Error) lowers to a single error return.
 	if len(returnTypes) == 1 && returnTypes[0].IsResultType() && len(returnTypes[0].TypeParams) >= 2 {
 		succT := returnTypes[0].TypeParams[0]
-		zeroSucc, err := t.zeroValueExprForASTType(succT)
-		if err != nil {
-			zeroSucc = t.buildZeroCompositeLiteral(&succT)
-		}
 		errExpr, err := t.ensureFailureErrorExpr(stmt)
 		if err != nil {
 			errExpr = t.defaultAssertionErrorExpr(stmt)
+		}
+		if succT.Ident == ast.TypeVoid {
+			return &goast.ReturnStmt{
+				Results: []goast.Expr{errExpr},
+			}
+		}
+		zeroSucc, err := t.zeroValueExprForASTType(succT)
+		if err != nil {
+			zeroSucc = t.buildZeroCompositeLiteral(&succT)
 		}
 		return &goast.ReturnStmt{
 			Results: []goast.Expr{zeroSucc, errExpr},
@@ -333,4 +350,169 @@ func (t *Transformer) mainEnsureExitStmt(stmt ast.EnsureNode) goast.Stmt {
 		},
 	}
 	return &goast.BlockStmt{List: []goast.Stmt{fprintfCall, exitCall}}
+}
+
+// transformEnsureCallSubject lowers `ensure need(ok)` / `ensure need(ok) is Ok()` and similar
+// fire-and-forget call subjects. Result Ok/Err uses an if-Init so the call runs once.
+func (t *Transformer) transformEnsureCallSubject(fn ast.FunctionNode, ensure ast.EnsureNode) (goast.Stmt, error) {
+	subjectType, err := t.lookupEnsureSubjectTypeForEmit(ensure)
+	if err != nil {
+		return nil, fmt.Errorf("ensure call subject type: %w", err)
+	}
+	if t.log != nil {
+		t.log.WithFields(logrus.Fields{
+			"function":    "transformEnsureCallSubject",
+			"subject":     ensure.Subject.String(),
+			"subjectType": subjectType.Ident,
+			"assertion":   ensure.Assertion.String(),
+		}).Debug("emitting ensure with call subject")
+	}
+
+	if subjectType.IsResultType() && (ensureIsOnlyOkAssertion(ensure) || ensureIsOnlyErrAssertion(ensure)) {
+		return t.transformEnsureResultCallSubject(fn, ensure, subjectType)
+	}
+
+	// Bool / type-guard / other constraints: condition uses the call expression directly.
+	stmts, err := t.transformEnsureConditionForCall(&ensure, subjectType)
+	if err != nil {
+		return nil, err
+	}
+	if len(stmts) == 0 {
+		return nil, fmt.Errorf("transformEnsureConditionForCall returned no statements")
+	}
+	exprStmt, ok := stmts[0].(*goast.ExprStmt)
+	if !ok {
+		return nil, fmt.Errorf("expected ExprStmt from transformEnsureConditionForCall, got %T", stmts[0])
+	}
+	finalCondition := negateCondition(exprStmt.X)
+	finallyStmts := []goast.Stmt{}
+	errorStmt := t.transformErrorStatement(fn, ensure)
+	if ensure.Block != nil {
+		if err := t.restoreScope(ensure.Block); err != nil {
+			return nil, fmt.Errorf("failed to restore ensure block scope: %w", err)
+		}
+		for _, blockStatement := range ensure.Block.Body {
+			if _, isReturn := blockStatement.(ast.ReturnNode); isReturn {
+				continue
+			}
+			goStmt, err := t.transformStatement(blockStatement)
+			if err != nil {
+				return nil, err
+			}
+			if goStmt != nil {
+				finallyStmts = append(finallyStmts, goStmt)
+			}
+		}
+	}
+	return &goast.IfStmt{
+		Cond: finalCondition,
+		Body: &goast.BlockStmt{List: append(finallyStmts, errorStmt)},
+	}, nil
+}
+
+func ensureIsOnlyErrAssertion(stmt ast.EnsureNode) bool {
+	if stmt.Assertion.BaseType != nil || len(stmt.Assertion.Constraints) != 1 {
+		return false
+	}
+	c := stmt.Assertion.Constraints[0]
+	return c.Name == "Err" && len(c.Args) == 0
+}
+
+// transformEnsureResultCallSubject emits:
+//
+//	if err := need(ok); err != nil { return …, err }           // Result(Void) / Ok
+//	if _, err := fetch(); err != nil { return …, err }         // Result(T) / Ok
+//	if err := need(ok); err == nil { … }                      // Result(Void) / Err
+func (t *Transformer) transformEnsureResultCallSubject(fn ast.FunctionNode, ensure ast.EnsureNode, subjectType ast.TypeNode) (goast.Stmt, error) {
+	callExpr, err := t.transformExpression(ensure.Subject)
+	if err != nil {
+		return nil, fmt.Errorf("ensure call subject: %w", err)
+	}
+	errIdent := goast.NewIdent("err")
+	var init goast.Stmt
+	succT := subjectType.TypeParams[0]
+	if succT.Ident == ast.TypeVoid {
+		init = &goast.AssignStmt{
+			Lhs: []goast.Expr{errIdent},
+			Tok: token.DEFINE,
+			Rhs: []goast.Expr{callExpr},
+		}
+	} else {
+		lhs := []goast.Expr{}
+		if succT.IsTupleType() {
+			for range succT.TypeParams {
+				lhs = append(lhs, goast.NewIdent("_"))
+			}
+		} else {
+			lhs = append(lhs, goast.NewIdent("_"))
+		}
+		lhs = append(lhs, errIdent)
+		init = &goast.AssignStmt{
+			Lhs: lhs,
+			Tok: token.DEFINE,
+			Rhs: []goast.Expr{callExpr},
+		}
+	}
+
+	var cond goast.Expr
+	if ensureIsOnlyOkAssertion(ensure) {
+		// Failure when err != nil (success polarity of Ok is err == nil).
+		cond = &goast.BinaryExpr{X: errIdent, Op: token.NEQ, Y: goast.NewIdent("nil")}
+	} else {
+		// ensure … is Err(): failure when err == nil.
+		cond = &goast.BinaryExpr{X: errIdent, Op: token.EQL, Y: goast.NewIdent("nil")}
+	}
+
+	finallyStmts := []goast.Stmt{}
+	errorStmt := t.transformErrorStatement(fn, ensure)
+	if ensure.Block != nil {
+		if err := t.restoreScope(ensure.Block); err != nil {
+			return nil, fmt.Errorf("failed to restore ensure block scope: %w", err)
+		}
+		for _, blockStatement := range ensure.Block.Body {
+			if _, isReturn := blockStatement.(ast.ReturnNode); isReturn {
+				continue
+			}
+			goStmt, err := t.transformStatement(blockStatement)
+			if err != nil {
+				return nil, err
+			}
+			if goStmt != nil {
+				finallyStmts = append(finallyStmts, goStmt)
+			}
+		}
+	}
+	return &goast.IfStmt{
+		Init: init,
+		Cond: cond,
+		Body: &goast.BlockStmt{List: append(finallyStmts, errorStmt)},
+	}, nil
+}
+
+// transformEnsureConditionForCall is like transformEnsureCondition but uses the call Subject
+// and a pre-resolved subject type (no Variable lookup).
+func (t *Transformer) transformEnsureConditionForCall(ensure *ast.EnsureNode, varType ast.TypeNode) ([]goast.Stmt, error) {
+	t.logAssertionBaseType(ensure)
+
+	result, handled, err := t.handleTypeTargetMembership(ensure, varType)
+	if err != nil || handled {
+		return result, err
+	}
+
+	result, handled, err = t.handleTypeGuardCall(ensure, varType)
+	if err != nil {
+		return nil, err
+	}
+	if handled {
+		if len(result) == 0 {
+			return nil, fmt.Errorf("type guard ensure produced no condition to emit")
+		}
+		return result, nil
+	}
+
+	result, handled, err = t.handleAssertionIR(ensure, varType)
+	if err != nil || handled {
+		return result, err
+	}
+	return t.handleMeetChains(ensure, varType)
 }

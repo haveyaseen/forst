@@ -50,7 +50,7 @@ error NotOk {
 
 func check() {
 	n := 0
-	ensure n is GreaterThan(0) else NotOk({ msg: "bad" })
+	ensure n is GreaterThan(0) else NotOk{ msg: "bad" }
 }
 
 func main() {

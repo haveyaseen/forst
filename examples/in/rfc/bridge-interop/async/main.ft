@@ -4,19 +4,19 @@ import "./legacy/payment" js
 import "./legacy/events" js
 import "strconv"
 
-func checkout(amount Float, currency String): String {
+func checkout(amount Float, currency String): Result(String, Error) {
 	result := payment.create(amount, currency)
 	ensure result is Ok()
 	return result.id
 }
 
-func echo(n Float): String {
+func echo(n Float): Result(String, Error) {
 	res := payment.concurrentEcho(n)
 	ensure res is Ok()
 	return strconv.FormatFloat(res.echo, 'f', 0, 64)
 }
 
-func drainEvents(userId String): Int {
+func drainEvents(userId String): Result(Int, Error) {
 	seq := events.subscribe(userId)
 	ensure seq is Ok()
 	var count: Int = 0
@@ -29,11 +29,14 @@ func drainEvents(userId String): Int {
 
 func main() {
 	id := checkout(100.0, "USD")
+	ensure id is Ok()
 	println("payment:" + id)
 
 	msg := echo(7.0)
+	ensure msg is Ok()
 	println("echo:" + msg)
 
 	n := drainEvents("user-42")
+	ensure n is Ok()
 	println("events:" + string(n))
 }

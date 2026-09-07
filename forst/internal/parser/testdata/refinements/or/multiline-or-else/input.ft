@@ -6,7 +6,7 @@ func f(x String, value String, status ActiveStatus): Error {
     ensure value is String.Min(3).Max(32)
     or UUID.V4()
     or Slug.Valid()
-    else InvalidValue()
+    else InvalidValue{}
     return ""
 }
 

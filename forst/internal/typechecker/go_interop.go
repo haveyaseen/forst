@@ -445,6 +445,21 @@ func (tc *TypeChecker) typeDefFromSamePackageGoType(tn *types.TypeName) (ast.Typ
 				Assertion: &ast.AssertionNode{BaseType: &base},
 			},
 		}, true
+	case *types.Slice:
+		elem, ok := tc.mapGoType(u.Elem())
+		if !ok || elem.Ident == ast.TypeImplicit {
+			return ast.TypeDefNode{}, false
+		}
+		base := ast.TypeArray
+		return ast.TypeDefNode{
+			Ident: ident,
+			Expr: ast.TypeDefAssertionExpr{
+				Assertion: &ast.AssertionNode{
+					BaseType:   &base,
+					TypeParams: []ast.TypeNode{elem},
+				},
+			},
+		}, true
 	default:
 		return ast.TypeDefNode{}, false
 	}
@@ -661,6 +676,10 @@ func (tc *TypeChecker) lookupFieldPathFromGoType(goBase types.Type, fieldPath []
 }
 
 func (tc *TypeChecker) goTypeDisplayStringForVariablePath(id ast.Identifier) (string, bool) {
+	return tc.goTypeDisplayStringForVariable(id, ast.SourceSpan{})
+}
+
+func (tc *TypeChecker) goTypeDisplayStringForVariable(id ast.Identifier, span ast.SourceSpan) (string, bool) {
 	if tc == nil {
 		return "", false
 	}
@@ -669,8 +688,13 @@ func (tc *TypeChecker) goTypeDisplayStringForVariablePath(id ast.Identifier) (st
 		return "", false
 	}
 	base := ast.Identifier(parts[0])
-	gt, ok := tc.variableGoTypes[base]
-	if !ok || gt == nil {
+	var gt types.Type
+	if span.IsSet() {
+		gt = tc.goTypeForVariableNode(ast.VariableNode{Ident: ast.Ident{ID: id, Span: span}})
+	} else {
+		gt = tc.goTypeForVariableIdent(base)
+	}
+	if gt == nil {
 		return "", false
 	}
 	last, err := goTypeAtFieldPath(gt, parts[1:])
@@ -776,7 +800,7 @@ func (tc *TypeChecker) goTypeForParamTypeNode(typ ast.TypeNode) types.Type {
 	return tc.goTypeForQualifiedImportTypeIdent(typ.Ident)
 }
 
-func (tc *TypeChecker) bindVariableGoTypeFromParamType(ident ast.Identifier, typ ast.TypeNode) {
+func (tc *TypeChecker) bindVariableGoTypeFromParamType(ident ast.Ident, typ ast.TypeNode) {
 	if normalized, ok := tc.normalizeGoImportParamType(typ); ok {
 		typ = normalized
 	}
@@ -784,7 +808,8 @@ func (tc *TypeChecker) bindVariableGoTypeFromParamType(ident ast.Identifier, typ
 		if named, ok := gt.(*types.Named); ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "testing" && named.Obj().Name() == "T" {
 			gt = types.NewPointer(gt)
 		}
-		tc.variableGoTypes[ident] = gt
+		vn := ast.VariableNode{Ident: ident}
+		tc.bindVariableGoType(ident.ID, &vn, gt)
 	}
 }
 
@@ -819,16 +844,21 @@ func (tc *TypeChecker) goTypeInfoForExpression(expr ast.ExpressionNode) (types.T
 	}
 	switch e := expr.(type) {
 	case ast.VariableNode:
-		if gt := tc.variableGoTypes[e.Ident.ID]; gt != nil {
-			return gt, true
-		}
 		parts := strings.Split(string(e.Ident.ID), ".")
-		if len(parts) > 1 {
-			if base := tc.variableGoTypes[ast.Identifier(parts[0])]; base != nil {
-				last, err := goTypeAtFieldPath(base, parts[1:])
-				if err == nil {
-					return last, true
+		if len(parts) == 1 {
+			if gt := tc.goTypeForVariableNode(e); gt != nil {
+				if e.Ident.Span.IsSet() {
+					k := variableOccurrenceKey{ident: e.Ident.ID, span: e.Ident.Span}
+					tc.variableGoTypesByOccurrence[k] = gt
 				}
+				return gt, true
+			}
+			break
+		}
+		if base := tc.goTypeForVariableIdent(ast.Identifier(parts[0])); base != nil {
+			last, err := goTypeAtFieldPath(base, parts[1:])
+			if err == nil {
+				return last, true
 			}
 		}
 	case ast.FunctionCallNode:
@@ -927,7 +957,7 @@ func (tc *TypeChecker) bindVariableGoTypesFromCall(assign ast.AssignmentNode) {
 	if fc, ok := assign.RValues[0].(ast.FunctionCallNode); ok {
 		if gt := tc.goTypeFromBuiltinNewCall(fc); gt != nil && len(assign.LValues) == 1 {
 			if vn, ok := assign.LValues[0].(ast.VariableNode); ok {
-				tc.variableGoTypes[vn.Ident.ID] = gt
+				tc.bindVariableGoType(vn.Ident.ID, &vn, gt)
 			}
 			return
 		}
@@ -938,7 +968,7 @@ func (tc *TypeChecker) bindVariableGoTypesFromCall(assign ast.AssignmentNode) {
 				if !ok {
 					continue
 				}
-				tc.variableGoTypes[vn.Ident.ID] = res.At(i).Type()
+				tc.bindVariableGoType(vn.Ident.ID, &vn, res.At(i).Type())
 			}
 			return
 		}
@@ -949,7 +979,7 @@ func (tc *TypeChecker) bindVariableGoTypesFromCall(assign ast.AssignmentNode) {
 				if !ok {
 					continue
 				}
-				tc.variableGoTypes[vn.Ident.ID] = res.At(i).Type()
+				tc.bindVariableGoType(vn.Ident.ID, &vn, res.At(i).Type())
 			}
 			return
 		}
@@ -964,7 +994,7 @@ func (tc *TypeChecker) bindVariableGoTypesFromCall(assign ast.AssignmentNode) {
 				if !ok {
 					continue
 				}
-				tc.variableGoTypes[vn.Ident.ID] = res.At(i).Type()
+				tc.bindVariableGoType(vn.Ident.ID, &vn, res.At(i).Type())
 			}
 			return
 		}
@@ -977,7 +1007,7 @@ func (tc *TypeChecker) bindVariableGoTypesFromCall(assign ast.AssignmentNode) {
 		return
 	}
 	if gt := tc.goTypeForExpression(assign.RValues[0]); gt != nil {
-		tc.variableGoTypes[vn.Ident.ID] = gt
+		tc.bindVariableGoType(vn.Ident.ID, &vn, gt)
 	}
 }
 
@@ -1000,7 +1030,7 @@ func (tc *TypeChecker) goMethodSignatureFromDottedCall(fc ast.FunctionCallNode) 
 	if len(parts) != 2 {
 		return nil
 	}
-	goRecv := tc.variableGoTypes[ast.Identifier(parts[0])]
+	goRecv := tc.goTypeForVariableIdent(ast.Identifier(parts[0]))
 	if goRecv == nil {
 		return nil
 	}

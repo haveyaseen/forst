@@ -21,6 +21,7 @@ func main() {
 		println("defer")
 	}()
 }
+
 func twice(fn func(int) int, x int) int {
 	return fn(fn(x))
 }

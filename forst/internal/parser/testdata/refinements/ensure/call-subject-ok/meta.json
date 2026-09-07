@@ -1,0 +1,5 @@
+{
+  "id": "ensure/call-subject-ok",
+  "expect": "parse-ok",
+  "title": "call subject allowed"
+}

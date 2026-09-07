@@ -7,7 +7,7 @@ error FlagFail {reason: String}
 
 func checkFlag(ok Bool): Result(String, Error) {
 	ensure ok is True()
-	    else FlagFail({reason: "flag was false"})
+	    else FlagFail{reason: "flag was false"}
 	return "ok"
 }
 

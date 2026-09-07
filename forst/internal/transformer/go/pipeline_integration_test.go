@@ -974,6 +974,65 @@ func main() {
 	}
 }
 
+func TestPipeline_ensureOk_propagatesErrorSlot(t *testing.T) {
+	src := `package main
+
+error E { message: String }
+
+func inner(ok Bool) {
+	ensure ok is True()
+		else E{message: "bad"}
+	return "x"
+}
+
+func outer(ok Bool) {
+	name := inner(ok)
+	ensure name is Ok()
+	return 1
+}
+
+func main() {}
+`
+	out := compileForstPipeline(t, src)
+	if !strings.Contains(out, "return 0, nameErr") && !strings.Contains(out, "return 0, nameErr\n") {
+		// Accept common formatting variants of returning the Result error slot.
+		if !strings.Contains(out, "nameErr") || strings.Contains(out, `errors.New("ensure name is`) {
+			t.Fatalf("expected outer ensure Ok() to return nameErr, not synthetic errors.New; got:\n%s", out)
+		}
+		if !strings.Contains(out, "return") || !strings.Contains(out, "nameErr") {
+			t.Fatalf("expected return of nameErr on Ok unwrap failure, got:\n%s", out)
+		}
+	}
+	if strings.Contains(out, `errors.New("ensure name is Ok()`) {
+		t.Fatalf("Ok unwrap must not synthesize assertion error, got:\n%s", out)
+	}
+}
+
+func TestPipeline_resultNamedShapeReturn_usesDeclaredSuccessType(t *testing.T) {
+	src := `package main
+
+type A = { id: String }
+type B = { id: String }
+
+error E { message: String }
+
+func makeB(ok Bool): Result(B, Error) {
+	ensure ok is True()
+		else E{message: "bad"}
+	return { id: "x" }
+}
+
+func main() {}
+`
+	out := compileForstPipeline(t, src)
+	if !strings.Contains(out, "return B{") {
+		t.Fatalf("expected success return typed as B, got:\n%s", out)
+	}
+	if strings.Contains(out, "return A{") {
+		t.Fatalf("must not pick structurally identical A over declared B:\n%s", out)
+	}
+}
+
 func TestPipeline_shapeLiteral_pointerField_fromPointerVar(t *testing.T) {
 	src := `package main
 

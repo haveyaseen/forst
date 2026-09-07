@@ -3,7 +3,7 @@ package main
 type Error = String
 
 func f(x String, value String, status ActiveStatus): Error {
-    ensure name is String.Min(3).Max(32) or UUID.V4() else InvalidName()
+    ensure name is String.Min(3).Max(32) or UUID.V4() else InvalidName{}
     return ""
 }
 

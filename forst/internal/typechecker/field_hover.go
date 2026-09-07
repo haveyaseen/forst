@@ -66,10 +66,11 @@ func (tc *TypeChecker) FieldHoverMarkdown(root ast.Identifier, span ast.SourceSp
 	for _, bt := range baseTypes {
 		var resolved ast.TypeNode
 		var err error
-		if gt := tc.variableGoTypes[root]; gt != nil {
-			resolved, err = tc.lookupFieldPathFromGoType(gt, fieldPath)
+		goRoot := tc.goTypeForVariableIdent(root)
+		if goRoot != nil {
+			resolved, err = tc.lookupFieldPathFromGoType(goRoot, fieldPath)
 		}
-		if err != nil || tc.variableGoTypes[root] == nil {
+		if err != nil || goRoot == nil {
 			resolved, err = tc.lookupFieldPath(bt, fieldPath)
 		}
 		if err != nil {

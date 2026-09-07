@@ -23,6 +23,7 @@ func (tc *TypeChecker) storeInferredVariableType(variable ast.VariableNode, typ 
 	tc.log.Tracef("Storing inferred variable type for variable %s: %s", variable.Ident.ID, typ)
 	tc.storeSymbol(variable.Ident.ID, typ, SymbolVariable)
 	tc.storeInferredType(variable, typ)
+	tc.clearStaleIdentGoType(variable.Ident.ID)
 	hash, err := tc.Hasher.HashNode(variable)
 	if err != nil {
 		return

@@ -5,11 +5,13 @@ const (
 	B
 	C
 )
+
 const (
 	FlagNone = 1 << iota
 	FlagRead
 	FlagWrite
 )
+
 const Greeting = "hello"
 const Pi = 3
 

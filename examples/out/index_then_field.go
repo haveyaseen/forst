@@ -1,4 +1,5 @@
 package main
+
 // Item: TypeDefShapeExpr({name: String})
 type Item struct {
 	name string

@@ -1,7 +1,9 @@
 package main
 
-import "os"
-import fmt "fmt"
+import (
+	fmt "fmt"
+	"os"
+)
 
 func main() {
 	if os.Getenv("FORST_SKIP_NODE_HOST") == "1" {

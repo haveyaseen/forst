@@ -6,7 +6,7 @@ Blocking sync Forst calling multiple TypeScript modules — async functions and 
 import "./legacy/payment" js
 import "./legacy/events" js
 
-func checkout(amount Float, currency String): String {
+func checkout(amount Float, currency String): Result(String, Error) {
     result := payment.create(amount, currency)  // Result(T, Error)
     ensure result is Ok()
     return result.id

@@ -22,8 +22,7 @@
       "**/node_modules/**",
       "**/.git/**",
       "**/stream.ft",
-      "**/test_*.ft",
-      "**/*.skip.ft"
+      "**/test_*.ft"
     ],
     "maxDepth": 10
   }

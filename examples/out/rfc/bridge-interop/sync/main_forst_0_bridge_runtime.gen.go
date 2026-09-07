@@ -1,7 +1,9 @@
 package main
 
-import "encoding/json"
-import "forst/bridgert"
+import (
+	"encoding/json"
+	"forst/bridgert"
+)
 
 const (
 	forstBridgeGenStepDone  = "done"
@@ -13,6 +15,7 @@ var forstBridgeManifestJSON string = "{\"version\":1,\"exports\":[{\"moduleId\":
 func forst_bridge_callsync_legacy_payment_js_create() (T_BSiWS9EsB18, error) {
 	return bridgert.CallSyncArgs[T_BSiWS9EsB18]("legacy/payment.js", "create", json.RawMessage("[100,\"USD\"]"))
 }
+
 func init() {
 	bridgert.MustConfigureFromManifest(forstBridgeManifestJSON)
 }

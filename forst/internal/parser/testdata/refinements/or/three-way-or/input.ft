@@ -3,7 +3,7 @@ package main
 type Error = String
 
 func f(x String, value String, status ActiveStatus): Error {
-    ensure status is Pending() or Processing() or Retrying() else InvalidStatus()
+    ensure status is Pending() or Processing() or Retrying() else InvalidStatus{}
     return ""
 }
 

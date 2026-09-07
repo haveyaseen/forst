@@ -1,8 +1,11 @@
 package main
 
-import "regexp"
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+	"regexp"
+)
+
 // RedactOut: TypeDefShapeExpr({Text: String})
 type RedactOut struct {
 	Text string
@@ -16,6 +19,7 @@ func Redact(text string) (RedactOut, error) {
 	})
 	return RedactOut{Text: out}, nil
 }
+
 func main() {
 	r, rErr := Redact("baa")
 	if rErr != nil {

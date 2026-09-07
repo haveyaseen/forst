@@ -13,6 +13,13 @@ func ensureSubjectLabel(v ast.VariableNode) string {
 	return string(v.Ident.ID)
 }
 
+func ensureNodeSubjectLabel(stmt ast.EnsureNode) string {
+	if stmt.IsCallSubject() {
+		return stmt.Subject.String()
+	}
+	return ensureSubjectLabel(stmt.Variable)
+}
+
 func constraintArgDisplay(arg ast.ConstraintArgumentNode) string {
 	return arg.String()
 }
@@ -30,7 +37,7 @@ func defaultGotDiagnostic(subjectExpr goast.Expr) ensureGotDiagnostic {
 }
 
 func (t *Transformer) ensureSubjectVarType(stmt ast.EnsureNode) (ast.TypeNode, bool) {
-	ty, err := t.TypeChecker.LookupVariableType(&stmt.Variable, t.currentScope())
+	ty, err := t.lookupEnsureSubjectTypeForEmit(stmt)
 	if err != nil {
 		return ast.TypeNode{}, false
 	}
@@ -204,7 +211,7 @@ func (t *Transformer) ensureConstraintWantHint(assertion *ast.AssertionNode) str
 }
 
 func (t *Transformer) ensureFailureMessage(stmt ast.EnsureNode) (subjectLabel, assertionLabel, wantHint string) {
-	subjectLabel = ensureSubjectLabel(stmt.Variable)
+	subjectLabel = ensureNodeSubjectLabel(stmt)
 	assertionLabel = t.getAssertionStringForError(&stmt.Assertion)
 	wantHint = t.ensureConstraintWantHint(&stmt.Assertion)
 	return subjectLabel, assertionLabel, wantHint
@@ -232,7 +239,7 @@ func testFatalfCall(testIdent *goast.Ident, format string, args ...goast.Expr) *
 // ensureTestFatalfCall emits t.Fatalf with got/want diagnostics for a failed ensure in a test function.
 func (t *Transformer) ensureTestFatalfCall(testIdent *goast.Ident, stmt ast.EnsureNode) goast.Stmt {
 	subjectLabel, assertionLabel, wantHint := t.ensureFailureMessage(stmt)
-	subjectExpr, err := t.transformExpression(stmt.Variable)
+	subjectExpr, err := t.transformExpression(stmt.EnsureSubject())
 	if err != nil {
 		return testFatalfCall(testIdent, "ensure %s is %s",
 			goQuotedStringLit(subjectLabel),

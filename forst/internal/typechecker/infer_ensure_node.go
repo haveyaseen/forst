@@ -10,14 +10,25 @@ func (tc *TypeChecker) inferEnsureNode(node ast.Node) ([]ast.TypeNode, error) {
 	if !ok {
 		return nil, fmt.Errorf("inferEnsureNode: unexpected node type %T", node)
 	}
-	variableType, err := tc.inferEnsureType(ensureNode)
+
+	inferredVarType, err := tc.inferEnsureType(ensureNode)
+	if err != nil {
+		return nil, err
+	}
+
+	// Re-specialize for narrowing / Ok discriminators (inferEnsureType specializes a copy).
+	variableType, err := tc.lookupEnsureSubjectType(ensureNode)
+	if err != nil {
+		return nil, err
+	}
+	ensureNode, err = tc.SpecializeEnsureSugar(ensureNode, variableType)
 	if err != nil {
 		return nil, err
 	}
 
 	if ensureNode.Block != nil {
 		tc.pushScope(ensureNode.Block)
-		if _, err := tc.inferExpressionType(ensureNode.Variable); err != nil {
+		if _, err := tc.inferExpressionType(ensureNode.EnsureSubject()); err != nil {
 			return nil, err
 		}
 		if tc.ensureUsesBuiltinResultOkErrDiscriminator(ensureNode) {
@@ -33,18 +44,17 @@ func (tc *TypeChecker) inferEnsureNode(node ast.Node) ([]ast.TypeNode, error) {
 		if tc.ensureUsesBuiltinResultOkErrDiscriminator(ensureNode) {
 			tc.applyEnsureSuccessorNarrowing(ensureNode)
 		} else if _, isTT := ensureNode.Target.(ast.TypeTarget); isTT {
-			// TypeTarget success continuation is after the failure block.
 			tc.applyEnsureSuccessorNarrowing(ensureNode)
 		} else if p, ok := ensureNode.Target.(*ast.TypeTarget); ok && p != nil {
 			tc.applyEnsureSuccessorNarrowing(ensureNode)
 		}
 	} else {
-		if _, err := tc.inferExpressionType(ensureNode.Variable); err != nil {
+		if _, err := tc.inferExpressionType(ensureNode.EnsureSubject()); err != nil {
 			return nil, err
 		}
 		tc.applyEnsureSuccessorNarrowing(ensureNode)
 	}
 
-	tc.storeInferredType(ensureNode.Assertion, []ast.TypeNode{variableType})
+	tc.storeInferredType(ensureNode.Assertion, []ast.TypeNode{inferredVarType})
 	return nil, nil
 }

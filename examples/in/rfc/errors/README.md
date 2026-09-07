@@ -114,13 +114,13 @@ error BadEmail {
 }
 ```
 
-Or introduce **`BadEmail`** implicitly from the first **`ensure … or BadEmail({ … })`** (shape inferred).
+Or introduce **`BadEmail`** implicitly from the first **`ensure … or BadEmail{ … }`** (shape inferred).
 
 ### 2. Fail only via `ensure` on `Result`
 
 ```ft
 func parsePositive(n: Int): Result(Int, NotPositive)
-  ensure n > 0 or NotPositive({ field: "n" })
+  ensure n > 0 or NotPositive{ field: "n" }
   return n
 ```
 

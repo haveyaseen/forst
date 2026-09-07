@@ -316,7 +316,10 @@ func (t *Transformer) defineShapeFields(shape *ast.ShapeNode) error {
 
 // defineShapeTypes finds all shapes in type definitions and registers them
 func (t *Transformer) defineShapeTypes() error {
-	for _, def := range t.TypeChecker.Defs {
+	for ident, def := range t.TypeChecker.Defs {
+		if t.TypeChecker.IsHashBasedIdent(ident) {
+			continue
+		}
 		if typeDef, ok := def.(ast.TypeDefNode); ok {
 			if assertionExpr, ok := typeDef.Expr.(ast.TypeDefAssertionExpr); ok {
 				if assertionExpr.Assertion != nil {

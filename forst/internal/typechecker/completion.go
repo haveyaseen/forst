@@ -256,7 +256,7 @@ func (tc *TypeChecker) ListMembersForExpression(expr ast.ExpressionNode) []strin
 	if vn, ok := expr.(ast.VariableNode); ok {
 		parts := strings.Split(string(vn.Ident.ID), ".")
 		if len(parts) >= 2 {
-			if gt := tc.variableGoTypes[ast.Identifier(parts[0])]; gt != nil {
+			if gt := tc.goTypeForVariableIdent(ast.Identifier(parts[0])); gt != nil {
 				if goT, err := goTypeAtFieldPath(gt, parts[1:]); err == nil {
 					return goMemberNamesForType(goT)
 				}

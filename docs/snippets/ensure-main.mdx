@@ -6,16 +6,15 @@
     error AlreadyStopped {}
 
     func stop() {
-    	ensure position is GreaterThan(0) else AlreadyStopped()
+    	ensure position is GreaterThan(0) else AlreadyStopped{}
     	position = 0
     }
 
     func main() {
-    	err := drive(80)
-    	ensure !err
-    	err = stop()
-    	ensure !err else {
-    		fmt.Println("failed to stop:", err)
+    	ensure drive(80)
+    	stopOk := stop()
+    	ensure stopOk else {
+    		fmt.Println("failed to stop:", stopOk)
     	}
     }
     ```
@@ -36,15 +35,14 @@
     }
 
     func main() {
-    	err := drive(80)
-    	if err != nil {
+    	if err := drive(80); err != nil {
     		fmt.Fprintf(os.Stderr, "ensure failed: %v\n", err)
     		os.Exit(1)
     	}
-    	err = stop()
-    	if err != nil {
-    		fmt.Println("failed to stop:", err)
-    		fmt.Fprintf(os.Stderr, "ensure failed: %v\n", err)
+    	stopOk := stop()
+    	if stopOk != nil {
+    		fmt.Println("failed to stop:", stopOk)
+    		fmt.Fprintf(os.Stderr, "ensure failed: %v\n", stopOk)
     		os.Exit(1)
     	}
     }

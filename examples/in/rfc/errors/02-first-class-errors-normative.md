@@ -16,7 +16,7 @@
 | --- | --- |
 | **Ensure-only failure** | In functions returning **`Result(S, F)`**, **domain failure** is introduced only via **`ensure <condition> or <failure>`**, not via **`return SomeError(…)`**. |
 | **Nominal errors** | Concrete failure kinds are **named** with **`error X { … }`** (each **implicitly** relates to the language base **`Error`** for typing and lowering—there is **no** `error Error {}` in source); see [00](./00-error-system-architecture.md#error-types-base-only-in-the-language). |
-| **Constructors** | Failures use **explicit constructors**: **`N()`** (zero payload) or **`N({ field: … })`** (single shape); see §4. |
+| **Constructors** | Failures use Go-style struct literals: **`N{}`** (zero payload) or **`N{ field: … }`** (keyed fields); see §4. |
 | **`Result` guards** | **`Ok` / `Err`** remain **guards** on **`Result`** for **`is` / `ensure`** ([12 §0](../optionals/12-result-primitives-without-ok-err.md#0-scope-split-guards-vs-constructors)); failure **payload** is carried as **`Err(NominalValue)`** with **nominal** typing (§5). |
 | **`or` typing** | The **`or`** arm is always a **nominal error** value assignable to **`F`**; multiple arms use **LUB** (§6). |
 | **Inference** | When **`F`** is omitted from the signature, infer **`F`** from the **LUB** of **`or`** arms; **inferred** nominals are **exported** (§6). |
@@ -66,17 +66,17 @@ error NotPositive {
 If **`N`** is **not** yet declared, the **first** use of a constructor on the **`or`** side **introduces** **`error N { … }`** whose **payload shape** is inferred from that constructor (typed compatibly with **`Error`** / **`F`** per §5). Example:
 
 ```ft
-ensure n > 0 or NotPositive({
+ensure n > 0 or NotPositive{
     field: "n",
-})
+}
 ```
 
 If **`NotPositive`** was not declared earlier, the compiler records **`error NotPositive { field: String }`** (field names and types must stay **consistent** across the package).
 
 ### 3.4 Constructor forms
 
-- **Zero-argument:** **`RateLimited()`** — empty or unit payload per language rules.
-- **Single shape:** **`N({ f1: v1, … })`** — one record; fields define the nominal payload (0 or 1 shape argument per product decision).
+- **Zero-argument:** **`RateLimited{}`** — empty or unit payload per language rules.
+- **Single shape:** **`N{ f1: v1, … }`** — one record; fields define the nominal payload (0 or 1 shape argument per product decision).
 
 ---
 
@@ -85,7 +85,7 @@ If **`NotPositive`** was not declared earlier, the compiler records **`error Not
 Each nominal error provides:
 
 1. **Type** — **`error N { … }`** (explicit or implicit §3.3).
-2. **Constructor** — **`N()`** or **`N({ … })`**.
+2. **Constructor** — **`N{}`** or **`N{ … }`**.
 3. **Guard on `Result`** — Do **not** invent a separate synthetic guard per nominal on **`Result`**. Use the unified **`Err(…)`** guard whose **payload** is **nominally typed**:
 
    - Narrowing uses **`is Err(payload)`** / **`ensure r is Ok() or …`** such that the **failure branch** carries **`N`**’s payload type.
@@ -99,7 +99,7 @@ Each nominal error provides:
 
 Let **`T(e)`** denote the static type of expression **`e`**.
 
-1. **`or`** **must** be a **nominal error** expression: **`N()`** or **`N({ … })`** with **`N`** a user-defined nominal (compatible with the language **`Error`** model and assignable to **`F`** where required).
+1. **`or`** **must** be a **nominal error** expression: **`N{}`** or **`N{ … }`** with **`N`** a user-defined nominal (compatible with the language **`Error`** model and assignable to **`F`** where required).
 2. For **`Result(S, F)`**: **`T(orExpr)`** must be assignable to **`F`** (same width / assignability story as [02 — Result and error types](../optionals/02-result-and-error-types.md) §2; there is **no** user–user inheritance chain to “walk”).
 3. **LUB across arms:** If a function contains several **`ensure … or Eᵢ(…)`**, define **`F_or = lub(E₁, …, Eₙ)`** over the declared failure types (typically **`Error`** if arms use **distinct** nominals with no finer common **`F`**). The **declared** **`F`** must satisfy **`F_or <: F`** (typically **`F`** is **`F_or`** or a supertype such as **`Error`**).
 
@@ -155,7 +155,7 @@ The following are **not** part of the v1 language surface; they may be revisited
 ### Remaining (normative bar)
 
 - [ ] Enforce **ensure-only** failure for **`Result(S,F)`** (diagnostics for **`return` nominal failure** where §2 applies).
-- [ ] **Implicit `error N`** from first **`ensure … or N({ … })`**; unify payload shapes across the package.
+- [ ] **Implicit `error N`** from first **`ensure … or N{ … }`**; unify payload shapes across the package.
 - [ ] Typecheck **`or`** arms: **`T(or) <: F`**, **LUB** for **`F`** inference (§5–6).
 - [ ] **Export** inferred nominals on public **`F`** (§6.2).
 - [ ] Lower to Go **`error`** + **`forst/errors`** tags; generate TS types with **`forstTag` / `_tag`** per [00](./00-error-system-architecture.md).

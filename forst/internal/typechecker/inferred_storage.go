@@ -49,7 +49,8 @@ func (tc *TypeChecker) storeInferredFunctionReturnType(fn *ast.FunctionNode, ret
 		}
 	}
 	// Prefer the declared named shape return when inference collapsed to a different
-	// same-shaped named type (e.g. Acc value returned as Box).
+	// same-shaped named type (e.g. Acc value returned as Box). Also prefer declared
+	// slice typedef aliases (ExprList = []String) over bare Array(String).
 	if len(fn.ReturnTypes) == 1 && len(returnTypes) == 1 {
 		declared, inferred := fn.ReturnTypes[0], returnTypes[0]
 		if declared.Ident != "" && inferred.Ident != "" &&
@@ -61,6 +62,8 @@ func (tc *TypeChecker) storeInferredFunctionReturnType(fn *ast.FunctionNode, ret
 				if _, ok := tc.getShapeFromTypeDef(tc.Defs[inferred.Ident]); ok {
 					returnTypes = []ast.TypeNode{declared}
 				}
+			} else if _, ok := tc.Defs[declared.Ident].(ast.TypeDefNode); ok {
+				returnTypes = []ast.TypeNode{declared}
 			}
 		}
 	}

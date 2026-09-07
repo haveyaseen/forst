@@ -9,6 +9,6 @@ is (p Password) Strong {
 }
 
 func check(password Password): Error {
-    ensure password is Strong else WeakPassword()
+    ensure password is Strong else WeakPassword{}
     return ""
 }

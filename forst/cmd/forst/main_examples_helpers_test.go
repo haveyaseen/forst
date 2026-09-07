@@ -20,6 +20,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// wipExampleRels are incomplete RFC sketches under examples/in that must not enter
+// golden compile tests. Repo test harness only — not a compiler convention.
+var wipExampleRels = map[string]struct{}{
+	"input_validation.skip.ft": {},
+	"match.skip.ft":            {},
+}
+
+func isWipExampleSkip(relPath string) bool {
+	_, ok := wipExampleRels[filepath.ToSlash(relPath)]
+	return ok
+}
+
 // Returns all .go files in the output directory for a given example.
 func findExpectedOutputFiles(basePath string) ([]string, error) {
 	var files []string

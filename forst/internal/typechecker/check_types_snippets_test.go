@@ -550,7 +550,7 @@ func main() {
 			`package main
 error E { msg: String }
 func main() {
-	e := E({ msg: "x" })
+	e := E{ msg: "x" }
 	println(e.msg)
 }`,
 		},

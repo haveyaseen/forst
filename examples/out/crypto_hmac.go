@@ -13,10 +13,12 @@ func FingerprintTag(pepper string, value string) string {
 	sum := h.Sum([]byte{})
 	return hex.EncodeToString(sum)
 }
+
 func main() {
 	fmt.Println(FingerprintTag("pepper", "tag"))
 	fmt.Println(useHMAC("k", "m"))
 }
+
 func useHMAC(key string, msg string) int {
 	mac := hmac.New(sha256.New, []byte(key))
 	mac.Write([]byte(msg))

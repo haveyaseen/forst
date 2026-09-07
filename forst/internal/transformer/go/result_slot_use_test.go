@@ -83,14 +83,16 @@ func create(): Result(Payload, Error) {
 	return Payload{id: "x"}
 }
 
-func checkout(): String {
+func checkout() {
 	result := create()
 	ensure result is Ok()
 	return result.id
 }
 
 func main() {
-	println(checkout())
+	s := checkout()
+	ensure s is Ok()
+	println(s)
 }
 `
 	out := compileForstPipelineExt(t, src, pipelineOpts{goWorkspaceDir: moduleRootFromWD(t)})
@@ -148,4 +150,31 @@ func main() {
 		t.Fatalf("expected xErr binding for if x is Ok(), got:\n%s", out)
 	}
 	assertGoBuildsInTempModule(t, out)
+}
+
+func TestCollectResultSuccessValueUsed_ensureOkWithValue(t *testing.T) {
+	t.Parallel()
+	arg := ast.ConstraintArgumentNode{Value: intLiteralNodePtr(42)}
+	body := []ast.Node{
+		ast.EnsureNode{
+			Variable: ast.VariableNode{Ident: ast.Ident{ID: "x"}},
+			Assertion: ast.AssertionNode{
+				Constraints: []ast.ConstraintNode{{Name: "Ok", Args: []ast.ConstraintArgumentNode{arg}}},
+			},
+		},
+	}
+	if !collectResultSuccessValueUsed(body, "x") {
+		t.Fatal("ensure x is Ok(42) must keep success payload bound")
+	}
+	bare := []ast.Node{
+		ast.EnsureNode{
+			Variable: ast.VariableNode{Ident: ast.Ident{ID: "x"}},
+			Assertion: ast.AssertionNode{
+				Constraints: []ast.ConstraintNode{{Name: "Ok"}},
+			},
+		},
+	}
+	if collectResultSuccessValueUsed(bare, "x") {
+		t.Fatal("bare ensure x is Ok() should not force success binding")
+	}
 }

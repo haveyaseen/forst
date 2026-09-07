@@ -112,7 +112,7 @@ func ApplyMove(req MoveRequest): Result(MoveResponse, Error) {
 	idx := cellIndex(row, col)
 	cellEmpty := req.state.cells[idx] == ""
 	ensure cellEmpty is True()
-	    else CellTaken({row: row, col: col})
+	    else CellTaken{row: row, col: col}
 	next := setCell(cloneCells(req.state.cells), idx, req.state.nextPlayer)
 	np := opponent(req.state.nextPlayer)
 	w := winnerOrEmpty(next)

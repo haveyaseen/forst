@@ -1,0 +1,25 @@
+package main
+
+import "fmt"
+
+// Bare ensure x is Ok() promotes and propagates the Result error slot.
+// Golden: ../out/result_unwrap_propagate.go
+error InnerFail {reason: String}
+
+func inner(ok Bool) {
+	ensure ok is True()
+	    else InnerFail{reason: "inner failed"}
+	return "x"
+}
+
+func outer(ok Bool) {
+	name := inner(ok)
+	ensure name is Ok()
+	return 1
+}
+
+func main() {
+	r := outer(true)
+	ensure r is Ok()
+	fmt.Println(r)
+}

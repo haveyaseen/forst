@@ -16,45 +16,21 @@ func (tc *TypeChecker) inferReturnValueTypes(value ast.ExpressionNode) ([]ast.Ty
 }
 
 // functionEnsureImpliesResultReturn reports whether ensure statements in fn should promote the
-// function's inferred return to Result(S, Error). Pure Result discriminators (`ensure x is Ok()` /
-// `Err()` on a Result binding) only narrow locals and do not change the function return type.
+// function's inferred return to Result(S, Error). Any ensure that can fail the function
+// (including bare `ensure x is Ok()` unwrap) implies a Result return. main and Go tests
+// are forced void in applyEnsureReturnInference.
 func (tc *TypeChecker) functionEnsureImpliesResultReturn(fn ast.FunctionNode) bool {
 	for _, stmt := range fn.Body {
-		if stmt.Kind() != ast.NodeKindEnsure {
-			continue
+		if stmt.Kind() == ast.NodeKindEnsure {
+			return true
 		}
-		ensureNode, ok := stmt.(ast.EnsureNode)
-		if !ok {
-			if ptr, ok := stmt.(*ast.EnsureNode); ok && ptr != nil {
-				ensureNode = *ptr
-			} else {
-				return true
-			}
-		}
-		if ensureLooksLikeResultDiscriminator(ensureNode) {
-			continue
-		}
-		return true
 	}
 	return false
 }
 
-// ensureLooksLikeResultDiscriminator reports `ensure x is Ok()` / `Err()` shape (narrowing only).
-func ensureLooksLikeResultDiscriminator(n ast.EnsureNode) bool {
-	if n.Error != nil || n.Assertion.BaseType != nil || len(n.Assertion.Constraints) != 1 {
-		return false
-	}
-	c := n.Assertion.Constraints[0].Name
-	return c == "Ok" || c == "Err"
-}
-
 // Helper: isNilableType checks if a type can be assigned nil
 func isNilableType(tc *TypeChecker, t ast.TypeNode) bool {
-	base := t
-	chain := tc.GetTypeAliasChain(t)
-	if len(chain) > 0 {
-		base = chain[len(chain)-1]
-	}
+	base := resolveNilableBase(tc, t)
 
 	switch base.Ident {
 	case ast.TypePointer, ast.TypeError, ast.TypeMap, ast.TypeArray:
@@ -67,4 +43,29 @@ func isNilableType(tc *TypeChecker, t ast.TypeNode) bool {
 	}
 
 	return false
+}
+
+// isPresentableNilable is true for subjects that support Present() / bare ensure sugar:
+// Pointer, Map, Array (nilable except Error).
+func isPresentableNilable(tc *TypeChecker, t ast.TypeNode) bool {
+	base := resolveNilableBase(tc, t)
+	switch base.Ident {
+	case ast.TypePointer, ast.TypeMap, ast.TypeArray:
+		return true
+	}
+	switch string(base.Ident) {
+	case "Pointer", "Map", "Array":
+		return true
+	}
+	return false
+}
+
+func resolveNilableBase(tc *TypeChecker, t ast.TypeNode) ast.TypeNode {
+	base := t
+	if tc != nil {
+		if chain := tc.GetTypeAliasChain(t); len(chain) > 0 {
+			base = chain[len(chain)-1]
+		}
+	}
+	return base
 }

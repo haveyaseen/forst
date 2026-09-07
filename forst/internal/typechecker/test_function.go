@@ -26,11 +26,15 @@ func (tc *TypeChecker) IsGoTestFunction(fn ast.FunctionNode) bool {
 }
 
 // GoTypeForVariable returns the go/types binding for a local when known.
+// Prefer GoTypeForVariableNode when an occurrence span is available so shadowed
+// names (e.g. Test* param t vs a string local t) resolve correctly.
 func (tc *TypeChecker) GoTypeForVariable(ident ast.Identifier) types.Type {
-	if tc == nil {
-		return nil
-	}
-	return tc.variableGoTypes[ident]
+	return tc.goTypeForVariableIdent(ident)
+}
+
+// GoTypeForVariableNode returns the go/types binding for a specific variable occurrence.
+func (tc *TypeChecker) GoTypeForVariableNode(vn ast.VariableNode) types.Type {
+	return tc.goTypeForVariableNode(vn)
 }
 
 // IsGoTypesTestingT reports whether gt is *testing.T.

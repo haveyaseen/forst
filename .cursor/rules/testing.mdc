@@ -40,10 +40,16 @@ examples/in/method_multireturn/ (`task example:method-multireturn` — unpack Go
 examples/in/go_interop/cli.ft (`task example:go-interop` — Go FFI spread, field access, same-package hand-written Go)
 examples/in/basic_function.ft
 examples/in/ensure.ft
+examples/in/ensure_bool.ft (`task example:ensure-bool` — bare `ensure b` / `ensure !b`)
+examples/in/ensure_else_method.ft (`task example:ensure-else-method` — else method call + concat-in-shape)
 examples/in/nominal_error.ft (`task example:nominal-error` — nominal `error X { … }` type)
 examples/in/union_error_types.ft (`task example:union-error-types` — typedef `ParseError | IoError`, golden `examples/out/union_error_types.go`)
 examples/in/result_ensure.ft (`task example:result-ensure` — Result + `ensure … is Ok()`)
+examples/in/result_void_ensure.ft (`task example:result-void-ensure` — void+ensure → `Result(Void, Error)`)
+examples/in/result_unwrap_propagate.ft (`task example:result-unwrap-propagate` — bare `ensure x is Ok()` propagates error slot)
 examples/in/result_if.ft (`task example:result-if` — Result + `if x is Ok()`)
+examples/in/mutual_recursion.ft (`task example:mutual-recursion` — annotated mutual method recursion)
+examples/in/slice_alias_methods.ft (`task example:slice-alias-methods` — named slice alias + append)
 examples/in/tictactoe/ (merged package: `task example:tictactoe`; TypeScript from `forst generate`: `task example:tictactoe:generate` — writes gitignored `examples/in/tictactoe/generated/` and `examples/in/tictactoe/client/`)
 
 There should be corresponding outputs in the same paths just with `in` replaced by `out` (Go goldens). Tictactoe TS artifacts are not committed; regenerate locally after changing `.ft` files.

@@ -1,5 +1,0 @@
-{
-  "id": "ensure/boolean-ensure-call-rejected",
-  "expect": "parse-error",
-  "title": "boolean ensure call rejected"
-}

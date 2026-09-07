@@ -11,6 +11,14 @@ import (
 
 var forstInvokeRegistryInit bool
 
+func forst_invoke_main_ListTodos(args json.RawMessage) (any, error) {
+	result, err := ListTodos()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func forst_invoke_main_AddTodo(args json.RawMessage) (any, error) {
 var forstInvokeArgs []interface{}
 	if err := json.Unmarshal(args, &forstInvokeArgs); err != nil {
@@ -25,7 +33,11 @@ var forstInvokeArgs []interface{}
 	if err := json.Unmarshal(paramBytes, &input); err != nil {
 		return nil, fmt.Errorf("unmarshal parameter %q: %w", "input", err)
 	}
-	return AddTodo(input), nil
+	result, err := AddTodo(input)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func forst_invoke_main_CompleteTodo(args json.RawMessage) (any, error) {
@@ -42,15 +54,19 @@ var forstInvokeArgs []interface{}
 	if err := json.Unmarshal(paramBytes, &input); err != nil {
 		return nil, fmt.Errorf("unmarshal parameter %q: %w", "input", err)
 	}
-	return CompleteTodo(input), nil
+	result, err := CompleteTodo(input)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func forst_invoke_main_GetDashboard(args json.RawMessage) (any, error) {
-	return GetDashboard(), nil
-}
-
-func forst_invoke_main_ListTodos(args json.RawMessage) (any, error) {
-	return ListTodos(), nil
+	result, err := GetDashboard()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func init() {
@@ -59,10 +75,10 @@ func init() {
 	}
 	forstInvokeRegistryInit = true
 	reg := invokeembed.GlobalRegistry()
+	reg.RegisterMeta(invokeembed.FunctionMeta{Package:"main",Name:"ListTodos",SupportsStreaming:false,Runnable:true}, forst_invoke_main_ListTodos)
 	reg.RegisterMeta(invokeembed.FunctionMeta{Package:"main",Name:"AddTodo",SupportsStreaming:false,Runnable:true}, forst_invoke_main_AddTodo)
 	reg.RegisterMeta(invokeembed.FunctionMeta{Package:"main",Name:"CompleteTodo",SupportsStreaming:false,Runnable:true}, forst_invoke_main_CompleteTodo)
 	reg.RegisterMeta(invokeembed.FunctionMeta{Package:"main",Name:"GetDashboard",SupportsStreaming:false,Runnable:true}, forst_invoke_main_GetDashboard)
-	reg.RegisterMeta(invokeembed.FunctionMeta{Package:"main",Name:"ListTodos",SupportsStreaming:false,Runnable:true}, forst_invoke_main_ListTodos)
 	invokeembed.MustPrepareEmbeddedHostAuth()
 	invokeembed.MustStartEmbedded()
 }

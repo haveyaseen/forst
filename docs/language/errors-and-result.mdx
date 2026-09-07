@@ -50,9 +50,19 @@ Forst can infer this return type when `ensure` introduces a failure path.
 The check in `okInt` can fail, so Forst infers `Result(Int, Error)`. The caller
 uses `ensure x is Ok()` before using the successful value.
 
+A function with no success value that still has a failure path (body `ensure`
+with no success return) infers `Result(Void, Error)`. Generated Go lowers that
+to `func() error` — not a fake `(void, error)` pair. Callers treat the binding
+like other Results (`ensure result` or `ensure result is Ok()`).
+
 `Ok()` and `Err()` identify the two sides of a `Result` during `is` and
 `ensure` checks. They are currently checks. General `Ok(value)` and
 `Err(error)` constructors are still in development.
+
+Bare `ensure x is Ok()` with no `else` promotes the caller to `Result` (except
+`main` / Go tests) and returns the subject's error slot — same rule as
+`ensure !err` on an `Error`. Use `if x is Ok()` when you want local handling
+without promotion.
 
 ## Return a specific error with ensure
 
@@ -199,6 +209,8 @@ See the error handling examples on GitHub
 
 * [`examples/in/nominal_error.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/nominal_error.ft)
 * [`examples/in/result_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_ensure.ft)
+* [`examples/in/result_void_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_void_ensure.ft)
+* [`examples/in/result_unwrap_propagate.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_unwrap_propagate.ft)
 * [`examples/in/union_error_types.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/union_error_types.ft)
 
 ## Related

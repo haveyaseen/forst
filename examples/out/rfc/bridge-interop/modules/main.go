@@ -1,8 +1,10 @@
 package main
 
-import "strconv"
-import fmt "fmt"
-import os "os"
+import (
+	fmt "fmt"
+	os "os"
+	"strconv"
+)
 
 type T_Zn4FXrBCht3 struct {
 	Id         string  `json:"id"`

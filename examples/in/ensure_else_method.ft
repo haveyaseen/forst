@@ -1,0 +1,40 @@
+package main
+
+import "fmt"
+
+// ensure-else accepts method calls and concat inside shape literals.
+// Golden: ../out/ensure_else_method.go
+error E {message: String}
+
+type P = {n: Int}
+
+func (p *P) errMsg(msg String): E {
+	return E{message: msg}
+}
+
+func (p *P) badMethod(ok Bool) {
+	ensure ok is True()
+		else p.errMsg("bad")
+}
+
+func (p *P) badConcat(ok Bool, kw String) {
+	ensure ok is True()
+		else E{message: "bad " + kw}
+}
+
+func sibling(): String {
+	return "alive"
+}
+
+func run(ok Bool) {
+	p := &P{n: 0}
+	ensure p.badMethod(ok)
+	return 1
+}
+
+func main() {
+	r := run(true)
+	ensure r is Ok()
+	fmt.Println(r)
+	fmt.Println(sibling())
+}

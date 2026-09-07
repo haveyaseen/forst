@@ -79,6 +79,23 @@ func (t *Transformer) maybeSingleResultReturnStmt(s ast.ReturnNode, expected []a
 	if t.returnValueDelegatesWholeResult(s.Values[0]) {
 		return nil, false, nil
 	}
+	if len(expected[0].TypeParams) < 1 {
+		return nil, false, nil
+	}
+	successType := expected[0].TypeParams[0]
+	if successType.Ident == ast.TypeVoid {
+		// Result(Void, F) lowers to a single error return; success is bare `return nil`.
+		return &goast.ReturnStmt{Results: []goast.Expr{goast.NewIdent("nil")}}, true, nil
+	}
+
+	fnName, _, _ := t.returnStmtFunctionContext()
+	if expr, ok, err := t.tryWrapReturnValueInNamedStruct(fnName, 0, &successType, s.Values[0]); ok {
+		if err != nil {
+			return nil, true, err
+		}
+		return &goast.ReturnStmt{Results: []goast.Expr{expr, goast.NewIdent("nil")}}, true, nil
+	}
+
 	succExpr, err := t.transformExpression(s.Values[0])
 	if err != nil {
 		return nil, true, err

@@ -253,7 +253,21 @@ func (t *Transformer) transformTypeGuard(scopeNode ast.Node, guard ast.TypeGuard
 				})
 			}
 
-			// Add if statement to body
+			// Add if statement to body. Do not append a typed-nil elseBody into
+			// a BlockStmt list — go/ast.Walk panics on nil list elements.
+			elseParts := append([]goast.Stmt{}, elseIfs...)
+			if elseBody != nil {
+				elseParts = append(elseParts, elseBody)
+			}
+			var elseBranch goast.Stmt
+			switch len(elseParts) {
+			case 0:
+				// Unmatched if falls through (fail-closed via trailing return false).
+			case 1:
+				elseBranch = elseParts[0]
+			default:
+				elseBranch = &goast.BlockStmt{List: elseParts}
+			}
 			condExpr, err := t.transformExpression(cond)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform if condition: %s", err)
@@ -261,9 +275,7 @@ func (t *Transformer) transformTypeGuard(scopeNode ast.Node, guard ast.TypeGuard
 			bodyStmts = append(bodyStmts, &goast.IfStmt{
 				Cond: condExpr,
 				Body: ifBody,
-				Else: &goast.BlockStmt{
-					List: append(elseIfs, elseBody),
-				},
+				Else: elseBranch,
 			})
 
 		case ast.EnsureNode:

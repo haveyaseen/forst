@@ -1,0 +1,24 @@
+package main
+
+import "fmt"
+
+// Void body + ensure infers Result(Void, Error) -> Go `func() error`.
+// Bare ensure accepts a call subject when no success value is needed.
+// Golden: ../out/result_void_ensure.go
+error NeedFailed {reason: String}
+
+func need(ok Bool) {
+	ensure ok is True()
+	    else NeedFailed{reason: "need failed"}
+}
+
+func run(ok Bool) {
+	ensure need(ok)
+	return 1
+}
+
+func main() {
+	r := run(true)
+	ensure r is Ok()
+	fmt.Println(r)
+}

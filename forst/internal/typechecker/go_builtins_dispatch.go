@@ -10,7 +10,8 @@ func (tc *TypeChecker) dispatchLen(args []ast.ExpressionNode, argSpans []ast.Sou
 	if err != nil {
 		return nil, true, err
 	}
-	if !lenOperandAllowed(argType) {
+	resolved := tc.resolveTypeAliasChain(argType)
+	if !lenOperandAllowed(resolved) {
 		sp := spanForCallArg(argSpans, 0, args, callSpan)
 		return nil, true, reportBodyf(sp, "builtin-call", "len() invalid operand type %s", formatTypeIdentForDiag(argType.Ident))
 	}
@@ -25,7 +26,8 @@ func (tc *TypeChecker) dispatchCap(args []ast.ExpressionNode, argSpans []ast.Sou
 	if err != nil {
 		return nil, true, err
 	}
-	if !capOperandAllowed(argType) {
+	resolved := tc.resolveTypeAliasChain(argType)
+	if !capOperandAllowed(resolved) {
 		sp := spanForCallArg(argSpans, 0, args, callSpan)
 		return nil, true, reportBodyf(sp, "builtin-call", "cap() invalid operand type %s", formatTypeIdentForDiag(argType.Ident))
 	}
@@ -40,14 +42,16 @@ func (tc *TypeChecker) dispatchAppend(args []ast.ExpressionNode, argSpans []ast.
 	if err != nil {
 		return nil, true, err
 	}
-	if sliceType.Ident != ast.TypeArray || sliceType.ArrayLen != nil {
+	// Resolve typedef aliases (e.g. ExprList = []String) before requiring Array.
+	resolvedSlice := tc.resolveTypeAliasChain(sliceType)
+	if resolvedSlice.Ident != ast.TypeArray || resolvedSlice.ArrayLen != nil {
 		sp := spanForCallArg(argSpans, 0, args, callSpan)
-		if sliceType.ArrayLen != nil {
+		if resolvedSlice.ArrayLen != nil {
 			return nil, true, reportBodyf(sp, "builtin-call", "append() first argument must be a slice, not a fixed array")
 		}
 		return nil, true, reportBodyf(sp, "builtin-call", "append() first argument must be a slice, got %s", formatTypeIdentForDiag(sliceType.Ident))
 	}
-	elemType, ok := sliceElementType(sliceType)
+	elemType, ok := sliceElementType(resolvedSlice)
 	if !ok {
 		sp := spanForCallArg(argSpans, 0, args, callSpan)
 		return nil, true, reportBodyf(sp, "builtin-call", "append() slice must have an element type")
@@ -120,6 +124,8 @@ func (tc *TypeChecker) dispatchCopy(args []ast.ExpressionNode, argSpans []ast.So
 	if err != nil {
 		return nil, true, err
 	}
+	dstType = tc.resolveTypeAliasChain(dstType)
+	srcType = tc.resolveTypeAliasChain(srcType)
 	if dstType.Ident == ast.TypeArray && len(dstType.TypeParams) == 1 && dstType.TypeParams[0].Ident == ast.TypeInt && srcType.Ident == ast.TypeString {
 		return []ast.TypeNode{ast.NewBuiltinType(ast.TypeInt)}, true, nil
 	}
@@ -182,7 +188,7 @@ func (tc *TypeChecker) dispatchClear(args []ast.ExpressionNode, argSpans []ast.S
 	if err != nil {
 		return nil, true, err
 	}
-	if !clearOperandAllowed(argType) {
+	if !clearOperandAllowed(tc.resolveTypeAliasChain(argType)) {
 		sp := spanForCallArg(argSpans, 0, args, callSpan)
 		return nil, true, reportBodyf(sp, "builtin-call", "clear() expects a map or slice, got %s", formatTypeIdentForDiag(argType.Ident))
 	}

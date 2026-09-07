@@ -525,6 +525,10 @@ func defaultHelp(code string) string {
 		return "check the JS/TS import path and that the bridge index is up to date"
 	case strings.HasPrefix(code, "call-") || strings.HasPrefix(code, "generic-"):
 		return "fix the call arity or supply explicit type arguments"
+	case code == "error-struct-syntax":
+		return "use a Go-style struct literal: `E{}` or `E{ field: value }`"
+	case code == "error-payload":
+		return "match the fields declared on the error type"
 	default:
 		return "fix the types or expression at this location and try again"
 	}

@@ -2,11 +2,11 @@
   <Tab title="Forst">
     ```ft
     ensure avail is Ok()
-    ensure in.quantity is Max(avail) else InsufficientStock({
+    ensure in.quantity is Max(avail) else InsufficientStock{
     	stockKeepingUnit: in.stockKeepingUnit,
     	requested:        in.quantity,
     	available:        avail,
-    })
+    }
     ```
   </Tab>
   <Tab title="Generated Go">

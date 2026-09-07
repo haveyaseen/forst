@@ -41,6 +41,10 @@ func (tc *TypeChecker) inferEnsureType(ensure ast.EnsureNode) (ast.TypeNode, err
 	// Phase 2: lower ensure RHS to Assertion IR (TypeTarget stays separate).
 	tc.recordEnsureIR(ensure)
 
+	if err := tc.validateEnsureErrorFallback(ensure); err != nil {
+		return ast.TypeNode{}, err
+	}
+
 	subjSpan := ensure.EnsureSubjectSpan()
 
 	if _, isType := ensure.Target.(ast.TypeTarget); isType {

@@ -13,7 +13,7 @@ func testMain(user User, order Order, period Period, x String, status String, pa
         Pending
         Processing
     }
-    ensure status is Pending() else InvalidStatus()
+    ensure status is Pending() else InvalidStatus{}
     return ""
 }
 type Error = String

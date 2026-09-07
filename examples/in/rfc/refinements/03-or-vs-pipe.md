@@ -88,7 +88,7 @@ Forst already has `if` for booleans. `ensure` is the **check + narrow + fail** f
 type GameStatus = "playing" | "x_won" | "o_won" | "draw"
 
 func apply(status String): Result(GameStatus, BadStatus) {
-  ensure status is GameStatus else BadStatus()
+  ensure status is GameStatus else BadStatus{}
   return status
 }
 ```
@@ -112,8 +112,8 @@ Prefer a named type when the set is reused. Inline `or` is for local, small, sam
 **Still conjunctive playlist in functions:**
 
 ```ft
-ensure n is GreaterThan(0) else NotPositive()
-ensure n is LessThan(100) else TooBig()
+ensure n is GreaterThan(0) else NotPositive{}
+ensure n is LessThan(100) else TooBig{}
 ```
 
 Two failures, two nominal errors, LUB of `F` as [errors 02](../errors/02-first-class-errors-normative.md). **Do not** write `ensure n is GreaterThan(0) or LessThan(100)` unless you mean the **union** of those refinements (a number that is `> 0` **or** `< 100`, i.e. almost everything). That is the teaching moment: **`or` is or of predicates, not “and also check.”** Sequential `ensure` is and.

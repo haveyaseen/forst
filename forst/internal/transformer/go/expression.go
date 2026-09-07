@@ -285,12 +285,6 @@ func (t *Transformer) transformExpression(expr ast.ExpressionNode) (goast.Expr, 
 				Args: []goast.Expr{arg},
 			}, nil
 		}
-		if lit, ok, err := t.transformNominalErrorConstructorCall(e); ok {
-			if err != nil {
-				return nil, err
-			}
-			return lit, nil
-		}
 		if call, ok, err := t.transformNodeQualifiedCall(e); ok {
 			if err != nil {
 				return nil, err

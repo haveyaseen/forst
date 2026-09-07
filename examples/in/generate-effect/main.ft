@@ -8,6 +8,6 @@ error EmptyMessage {message: String}
 
 func Echo(input EchoRequest): Result(EchoResponse, Error) {
 	ensure input.message is Min(1)
-	    else EmptyMessage({message: "message must not be empty"})
+	    else EmptyMessage{message: "message must not be empty"}
 	return {echo: input.message, timestamp: 1234567890}
 }

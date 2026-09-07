@@ -981,7 +981,7 @@ error E { message: String }
 
 func inner(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 	return "x"
 }
 
@@ -1018,7 +1018,7 @@ error E { message: String }
 
 func makeB(ok Bool): Result(B, Error) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 	return { id: "x" }
 }
 

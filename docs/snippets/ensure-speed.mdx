@@ -6,7 +6,7 @@
     var position = 0
 
     func drive(speed Int) {
-    	ensure speed is LessThan(100) else TooFast()
+    	ensure speed is LessThan(100) else TooFast{}
     	position += speed
     }
     ```

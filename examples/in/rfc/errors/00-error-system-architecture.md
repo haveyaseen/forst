@@ -59,7 +59,7 @@ The language provides a single abstract **base `Error`** for typing and lowering
 
 The language does **not** require a human-readable string on every error. Optional display text may live on **specific** subtypes or **host** layers (HTTP bodies, logs)—not as a mandatory field on the base type.
 
-Nominal **`error`** names in Forst correspond to **tags** in lowered Go (see **`forst/errors`** below); do not rely on `Error()` strings for classification at boundaries.
+Nominal **`error`** names in Forst correspond to **tags** in lowered Go (see **`forst/errors`** below); do not rely on `Error{}` strings for classification at boundaries.
 
 The **implementation** supplies a base **`Error`** with fields along these lines (exact layout is specified with the compiler; this is **not** spelled as **`error Error { … }`** in Forst source):
 
@@ -77,9 +77,9 @@ error NotPositive {
 }
 ```
 
-**Implicit:** if **`NotPositive`** is not yet declared, a line such as **`ensure n > 0 or NotPositive({ field: "n" })`** causes the compiler to introduce **`error NotPositive { field: String }`** (the shape is inferred from the **constructor**—field names and types must be consistent across the package). Further **`ensure`** sites that use **`NotPositive({ … })`** must match that shape.
+**Implicit:** if **`NotPositive`** is not yet declared, a line such as **`ensure n > 0 or NotPositive{ field: "n" }`** causes the compiler to introduce **`error NotPositive { field: String }`** (the shape is inferred from the **constructor**—field names and types must be consistent across the package). Further **`ensure`** sites that use **`NotPositive{ … }`** must match that shape.
 
-Other domains can use the same pattern (`RateLimited({ … })`, …). **Retryability**, **HTTP status**, and **alerting** are **application policy** over those nominals, not fixed tables in the language.
+Other domains can use the same pattern (`RateLimited{ … }`, …). **Retryability**, **HTTP status**, and **alerting** are **application policy** over those nominals, not fixed tables in the language.
 
 The classification examples later use a second illustrative nominal:
 
@@ -135,7 +135,7 @@ Trace IDs, span IDs, and service metadata may be attached when errors are **lowe
 In Forst, **domain failures are not produced by factory helpers or ad hoc “return an error value”** in the primary authoring model. Instead:
 
 1. **`ensure`** — Failure is raised via **`ensure <condition> or <failure>`**. Only **`ensure`** introduces a failure along that path (see the [errors RFC hub](./README.md) and [ensure-only propagation](./01-ensure-only-failure-returns.md)).
-2. **Nominal constructors** — The **`or`** branch uses a **constructor call**: zero-argument **`RateLimited()`** or a single shape argument **`NotPositive({ field: "n" })`**. If the nominal is not yet declared, the compiler **implicitly defines** the corresponding **`error NotPositive { … }`** from that constructor (see [Error types — user-defined nominal errors](#2-user-defined-nominal-errors-explicit-or-implicit)).
+2. **Nominal constructors** — The **`or`** branch uses a Go-style struct literal: empty **`RateLimited{}`** or keyed fields **`NotPositive{ field: "n" }`**. If the nominal is not yet declared, the compiler **implicitly defines** the corresponding **`error NotPositive { … }`** from that constructor (see [Error types — user-defined nominal errors](#2-user-defined-nominal-errors-explicit-or-implicit)).
 3. **Forwarding** — When propagating a failure from a **`Result`** or inner call, use **`ensure`** with **`is Ok()`** (or the agreed **`Err`** guard) and **`or`** the constructor you need, or forward the inner failure expression when it already matches the expected nominal type—rather than building errors through generic factory functions.
 
 ### Positive framing (by design)
@@ -146,9 +146,9 @@ Illustrative (syntax follows the normative errors / `ensure` RFCs):
 
 ```ft
 func parsePositive(n: Int): Result(Int, NotPositive)
-  ensure n > 0 or NotPositive({
+  ensure n > 0 or NotPositive{
     field: "n",
-  })
+  }
   return n
 ```
 
@@ -237,7 +237,7 @@ Forst errors should be identifiable at runtime **without** guessing from `err.Er
    - **Optional helpers** such as **`IsForst(err error) bool`**, **`TagOf(err error) (string, bool)`**, or unwrap-safe predicates,
    - **Base struct fields** shared by lowered errors (codes, trace IDs) so user packages and generated code stay consistent.
 
-3. **Minimal conflict with typical `error` values** — Plain Go errors remain plain: **`forst/errors`** types should **not** overload **`Error()`** to embed the only copy of structured data; use normal struct fields and **`Unwrap`** where wrapping. Third-party **`error`** values are not Forst errors unless **`errors.As`** into a **user-generated** concrete type (e.g. `*NotPositiveError`) or the tag helper succeeds. Namespace **JSON** field names if needed to avoid clashing with generic API envelopes.
+3. **Minimal conflict with typical `error` values** — Plain Go errors remain plain: **`forst/errors`** types should **not** overload **`Error{}`** to embed the only copy of structured data; use normal struct fields and **`Unwrap`** where wrapping. Third-party **`error`** values are not Forst errors unless **`errors.As`** into a **user-generated** concrete type (e.g. `*NotPositiveError`) or the tag helper succeeds. Namespace **JSON** field names if needed to avoid clashing with generic API envelopes.
 
 Generated concrete types (e.g. `*NotPositiveError`) **live in the user’s Go module** but **embed** or **satisfy** types from **`forst/errors`**; the **tag** and **shape** follow the user’s Forst declarations.
 
@@ -317,7 +317,7 @@ func (e *NotPositiveError) Error() string {
 }
 ```
 
-Go **call sites** in Forst do not hand-author these structs to **fail**; the compiler lowers **`ensure … or NotPositive({ … })`** into values like `*NotPositiveError`. Other nominals get analogous generated types with **distinct `ForstTag()`** values.
+Go **call sites** in Forst do not hand-author these structs to **fail**; the compiler lowers **`ensure … or NotPositive{ … }`** into values like `*NotPositiveError`. Other nominals get analogous generated types with **distinct `ForstTag()`** values.
 
 ### 4. OpenTelemetry integration
 
@@ -408,32 +408,32 @@ These reconstruct tagged errors from **transport** payloads (HTTP, RPC). They ar
 // Wire conversion: branch on `forstTag` / `_tag` from your API contract — not on fixed built-in kinds.
 export function convertForstError(error: any): ForstError {
   if (error.forstTag === "NotPositive" || error._tag === "NotPositive") {
-    return new NotPositiveError({
+    return new NotPositiveError{
       code: error.code,
       timestamp: error.timestamp,
       traceId: error.traceId,
       spanId: error.spanId,
       context: error.context,
       field: error.field,
-    });
+    };
   }
   if (error.forstTag === "IoTimeout" || error._tag === "IoTimeout") {
-    return new IoTimeoutError({
+    return new IoTimeoutError{
       code: error.code,
       timestamp: error.timestamp,
       traceId: error.traceId,
       spanId: error.spanId,
       context: error.context,
       op: error.op,
-    });
+    };
   }
-  return new ForstError({
+  return new ForstError{
     code: error.code || "UNKNOWN_ERROR",
     timestamp: error.timestamp || Date.now(),
     traceId: error.traceId || "",
     spanId: error.spanId || "",
     context: error.context,
-  });
+  };
 }
 ```
 
@@ -488,10 +488,10 @@ export class ForstService {
   static processUser = (id: number) =>
     Effect.gen(function* () {
       // Call Forst function
-      const result = yield* Effect.tryPromise({
+      const result = yield* Effect.tryPromise{
         try: () => forstClient.processUser(id),
         catch: (error) => convertForstError(error),
-      });
+      };
 
       // Handle different error types
       if (result.success) {
@@ -515,10 +515,10 @@ export class ForstService {
   static processUserWithCircuitBreaker = (id: number) =>
     Effect.gen(function* () {
       // Circuit breaker logic
-      const result = yield* Effect.tryPromise({
+      const result = yield* Effect.tryPromise{
         try: () => circuitBreaker.call(() => forstClient.processUser(id)),
         catch: (error) => convertForstError(error),
-      });
+      };
 
       if (result.success) {
         return result.data;
@@ -631,20 +631,20 @@ export class OpenTelemetryErrorHandler {
       const span = trace.getActiveSpan();
       if (span) {
         span.recordException(error);
-        span.setStatus({ code: 1, message: error.code });
+        span.setStatus{ code: 1, message: error.code };
 
         // Add error attributes
-        span.setAttributes({
+        span.setAttributes{
           "error.code": error.code,
           "error.trace_id": error.traceId,
           "error.span_id": error.spanId,
           "error.type": error._tag,
-        });
+        };
 
         // Add context attributes
         if (error.context) {
           Object.entries(error.context).forEach(([key, value]) => {
-            span.setAttributes({ [`error.context.${key}`]: value });
+            span.setAttributes{ [`error.context.${key}`]: value };
           });
         }
       }
@@ -657,7 +657,7 @@ export class OpenTelemetryErrorHandler {
 
       yield* Effect.sync(() => {
         span.recordException(error);
-        span.setStatus({ code: 1, message: error.code });
+        span.setStatus{ code: 1, message: error.code };
         span.end();
       });
     });
@@ -717,25 +717,25 @@ describe("Forst Error Handling", () => {
   });
 
   it("should treat IoTimeout as retryable", () => {
-    const error = new IoTimeoutError({
+    const error = new IoTimeoutError{
       code: "IO_TIMEOUT",
       timestamp: Date.now(),
       traceId: "trace-123",
       spanId: "span-456",
       op: "read",
-    });
+    };
 
     expect(ForstErrorHandler.isRetryableError(error)).toBe(true);
   });
 
   it("should treat NotPositive as non-retryable", () => {
-    const error = new NotPositiveError({
+    const error = new NotPositiveError{
       code: "NOT_POSITIVE",
       timestamp: Date.now(),
       traceId: "trace-123",
       spanId: "span-456",
       field: "n",
-    });
+    };
 
     expect(ForstErrorHandler.isRetryableError(error)).toBe(false);
   });

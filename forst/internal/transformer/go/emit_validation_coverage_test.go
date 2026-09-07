@@ -252,7 +252,7 @@ error NotFound {
 }
 
 func main() {
-	e := NotFound({ id: "x" })
+	e := NotFound{ id: "x" }
 	println(e.id)
 }
 `

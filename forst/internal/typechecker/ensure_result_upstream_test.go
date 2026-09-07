@@ -35,7 +35,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func main() {}
@@ -58,7 +58,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func Run(ok Bool) {
@@ -84,7 +84,7 @@ error E { message: String }
 
 func check(b Bool) {
 	ensure b
-		else E({message: "no"})
+		else E{message: "no"}
 	return 1
 }
 
@@ -105,7 +105,7 @@ error E { message: String }
 
 func inner(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 	return "x"
 }
 
@@ -216,7 +216,7 @@ error E { message: String }
 type P = { n: Int }
 
 func (p *P) errMsg(msg String): E {
-	return E({message: msg})
+	return E{message: msg}
 }
 
 func (p *P) badMethod(ok Bool) {
@@ -226,7 +226,7 @@ func (p *P) badMethod(ok Bool) {
 
 func (p *P) badConcat(ok Bool, kw String) {
 	ensure ok is True()
-		else E({message: "bad " + kw})
+		else E{message: "bad " + kw}
 }
 
 func Run(ok Bool) {
@@ -252,7 +252,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func Run(ok Bool) {
@@ -368,7 +368,7 @@ error E { message: String }
 
 func need(ok Bool): Error {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 	return nil
 }
 
@@ -389,19 +389,19 @@ error E { message: String }
 
 func checkPtr(p *Int) {
 	ensure p
-		else E({message: "nil ptr"})
+		else E{message: "nil ptr"}
 	return 1
 }
 
 func checkMap(m map[String]Int) {
 	ensure m
-		else E({message: "nil map"})
+		else E{message: "nil map"}
 	return 1
 }
 
 func checkSlice(xs []Int) {
 	ensure xs
-		else E({message: "nil slice"})
+		else E{message: "nil slice"}
 	return 1
 }
 
@@ -472,7 +472,7 @@ error E { message: String }
 
 func check(p *Int) {
 	ensure !p
-		else E({message: "expected nil"})
+		else E{message: "expected nil"}
 	return 1
 }
 
@@ -489,7 +489,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func Run(ok Bool) {
@@ -514,7 +514,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func Run(ok Bool) {

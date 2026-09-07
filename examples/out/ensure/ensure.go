@@ -6,6 +6,32 @@ import (
 	utf8 "unicode/utf8"
 )
 
+// TooFast: TypeDefErrorExpr({message: String})
+type TooFast struct {
+	message string
+}
+
+// TooShort: TypeDefErrorExpr({message: String})
+type TooShort struct {
+	message string
+}
+
+func (e TooFast) Error() string {
+	return "error"
+}
+
+func (e TooShort) Error() string {
+	return "error"
+}
+
+func (e TooFast) ForstErrorTag() string {
+	return "main/TooFast"
+}
+
+func (e TooShort) ForstErrorTag() string {
+	return "main/TooShort"
+}
+
 func checkConditions() (int, error) {
 	if err := mustBeARealName("John"); err != nil {
 		return 0, err
@@ -33,14 +59,14 @@ func main() {
 
 func mustBeARealName(name string) error {
 	if utf8.RuneCountInString(name) < 1 {
-		return TooShort("Name must be at least 1 character long")
+		return TooShort{message: "Name must be at least 1 character long"}
 	}
 	return nil
 }
 
 func mustNotExceedSpeedLimit(speed int) error {
 	if speed >= 100 {
-		return TooFast("Speed must not exceed 100 km/h")
+		return TooFast{message: "Speed must not exceed 100 km/h"}
 	}
 	return nil
 }

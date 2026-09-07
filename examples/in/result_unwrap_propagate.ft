@@ -8,7 +8,7 @@ error InnerFail {reason: String}
 
 func inner(ok Bool) {
 	ensure ok is True()
-	    else InnerFail({reason: "inner failed"})
+	    else InnerFail{reason: "inner failed"}
 	return "x"
 }
 

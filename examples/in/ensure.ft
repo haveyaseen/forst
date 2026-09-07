@@ -2,14 +2,20 @@ package main
 
 import "fmt"
 
+// ensure with Min/LessThan and typed failure errors.
+// Golden: ../out/ensure/ensure.go
+error TooShort {message: String}
+
+error TooFast {message: String}
+
 func mustBeARealName(name String) {
 	ensure name is Min(1)
-	    else TooShort("Name must be at least 1 character long")
+	    else TooShort{message: "Name must be at least 1 character long"}
 }
 
 func mustNotExceedSpeedLimit(speed Int) {
 	ensure speed is LessThan(100)
-	    else TooFast("Speed must not exceed 100 km/h")
+	    else TooFast{message: "Speed must not exceed 100 km/h"}
 }
 
 func checkConditions() {

@@ -125,7 +125,7 @@ Name the refined type once, then enforce it at the boundary with that name:
 error InvalidUsername {}
 
 func signup(username String) {
-	ensure username is Username else InvalidUsername()
+	ensure username is Username else InvalidUsername{}
 }
 ```
 

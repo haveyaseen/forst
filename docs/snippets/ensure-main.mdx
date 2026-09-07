@@ -6,7 +6,7 @@
     error AlreadyStopped {}
 
     func stop() {
-    	ensure position is GreaterThan(0) else AlreadyStopped()
+    	ensure position is GreaterThan(0) else AlreadyStopped{}
     	position = 0
     }
 

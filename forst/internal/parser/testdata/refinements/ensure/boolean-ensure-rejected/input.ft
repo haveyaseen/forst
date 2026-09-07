@@ -3,7 +3,7 @@ package main
 type Error = String
 
 func f(x String, value String, status ActiveStatus): Error {
-    ensure quantity > 0 else InvalidQuantity()
+    ensure quantity > 0 else InvalidQuantity{}
     return ""
 }
 

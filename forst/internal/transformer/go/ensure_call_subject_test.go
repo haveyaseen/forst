@@ -13,7 +13,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func run(ok Bool) {
@@ -70,7 +70,7 @@ error E { message: String }
 
 func need(ok Bool) {
 	ensure ok is True()
-		else E({message: "bad"})
+		else E{message: "bad"}
 }
 
 func run(ok Bool) {

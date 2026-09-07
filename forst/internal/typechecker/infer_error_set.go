@@ -116,8 +116,9 @@ func (tc *TypeChecker) errorSetFromEnsure(stmt ast.EnsureNode) FunctionErrorSet 
 	}
 	switch e := (*stmt.Error).(type) {
 	case ast.EnsureErrorCall:
+		// Nominal error constructors must use struct literals (EnsureErrorExpr), not calls.
 		if tc.IsNominalErrorType(ast.TypeIdent(e.ErrorType)) {
-			acc.addNominal(ast.TypeIdent(e.ErrorType))
+			acc.markUnknown()
 			return acc.finish()
 		}
 		if set, ok := tc.errorSetFromEnsureHelperCall(e); ok {
@@ -139,6 +140,21 @@ func (tc *TypeChecker) errorSetFromEnsure(stmt ast.EnsureNode) FunctionErrorSet 
 			acc.addNominals(noms)
 		}
 	case ast.EnsureErrorExpr:
+		if shape, ok := e.Expr.(ast.ShapeNode); ok && shape.BaseType != nil &&
+			tc.IsNominalErrorType(*shape.BaseType) {
+			acc.addNominal(*shape.BaseType)
+			return acc.finish()
+		}
+		if types, err := tc.LookupInferredType(e.Expr, false); err == nil && len(types) > 0 {
+			for _, ty := range types {
+				noms, unk := tc.nominalErrorsFromTypeNode(ty)
+				if unk {
+					acc.markUnknown()
+				}
+				acc.addNominals(noms)
+			}
+			return acc.finish()
+		}
 		acc.markUnknown()
 	}
 	return acc.finish()
@@ -166,8 +182,8 @@ func (tc *TypeChecker) errorSetFromEnsureHelperCall(e ast.EnsureErrorCall) (Func
 }
 
 func (tc *TypeChecker) mergeErrorSetFromCall(call ast.FunctionCallNode, calleeSets map[ast.Identifier]FunctionErrorSet, acc *errorSetAcc) {
+	// Nominal error types are not callable; error-set from calls only tracks real functions.
 	if tc.IsNominalErrorType(ast.TypeIdent(call.Function.ID)) {
-		acc.addNominal(ast.TypeIdent(call.Function.ID))
 		return
 	}
 	if calleeSets != nil {
@@ -195,10 +211,9 @@ func (tc *TypeChecker) collectLocalFunctionErrorSet(fn ast.FunctionNode, calleeS
 		},
 		OnReturn: func(ret ast.ReturnNode) bool {
 			for _, val := range ret.Values {
-				if call, ok := val.(ast.FunctionCallNode); ok {
-					if tc.IsNominalErrorType(ast.TypeIdent(call.Function.ID)) {
-						acc.addNominal(ast.TypeIdent(call.Function.ID))
-					}
+				if shape, ok := val.(ast.ShapeNode); ok && shape.BaseType != nil &&
+					tc.IsNominalErrorType(*shape.BaseType) {
+					acc.addNominal(*shape.BaseType)
 				}
 			}
 			return true

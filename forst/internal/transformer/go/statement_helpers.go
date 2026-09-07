@@ -40,20 +40,11 @@ func (t *Transformer) enclosingReturnTypes(fnNode ast.Node) ([]ast.TypeNode, str
 	}
 }
 
-// transformEnsureErrorFallback lowers `ensure … else Bad("msg")` / `else errVar` / method calls.
+// transformEnsureErrorFallback lowers `ensure … else Bad("msg")` / `else errVar` /
+// `else E{…}` / method calls. Nominal errors use struct literals (EnsureErrorExpr).
 func (t *Transformer) transformEnsureErrorFallback(errorNode ast.EnsureErrorNode) (goast.Expr, error) {
 	switch e := errorNode.(type) {
 	case ast.EnsureErrorCall:
-		if len(e.ErrorArgs) == 1 {
-			if def, ok := t.TypeChecker.Defs[ast.TypeIdent(e.ErrorType)].(ast.TypeDefNode); ok {
-				if _, ok := def.Expr.(ast.TypeDefErrorExpr); ok {
-					if shape, ok := e.ErrorArgs[0].(ast.ShapeNode); ok {
-						expected := &ast.TypeNode{Ident: def.Ident}
-						return t.transformShapeNodeWithExpectedType(&shape, expected, nil)
-					}
-				}
-			}
-		}
 		args := make([]goast.Expr, len(e.ErrorArgs))
 		for i, arg := range e.ErrorArgs {
 			ex, err := t.transformExpression(arg)

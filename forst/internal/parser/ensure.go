@@ -204,13 +204,13 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 				if inGuard {
 					p.FailWithReport(elseTok, "refinement-failure-block-in-guard", "failure blocks are not allowed inside type guards",
 						"Typed failure blocks (`else { … }`) cannot appear inside type guards.",
-						"use a typed `else Error()` or move the ensure outside the guard")
+						"use a typed `else Error{}` or move the ensure outside the guard")
 				}
 				block = p.parseEnsureBlock()
 			} else {
 				if inGuard {
 					p.FailWithReport(elseTok, "refinement-else-in-guard", "typed `else` is not allowed inside type guards",
-						"Typed failure (`else Error()`) cannot appear inside type guards.",
+						"Typed failure (`else Error{}`) cannot appear inside type guards.",
 						"move the ensure outside the guard or use a failure block only in ordinary functions")
 				}
 				if inMain {
@@ -230,7 +230,7 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 		if inGuard {
 			p.FailWithReport(p.current(), "refinement-failure-block-in-guard", "failure blocks are not allowed inside type guards",
 				"Typed failure blocks (`else { … }`) cannot appear inside type guards.",
-				"use a typed `else Error()` or move the ensure outside the guard")
+				"use a typed `else Error{}` or move the ensure outside the guard")
 		}
 		p.FailWithReport(p.current(), "refinement-bare-ensure-block", "ensure failure block requires `else`",
 			"ensure failure block requires 'else'; write: ensure … else { … }",
@@ -249,7 +249,7 @@ func (p *Parser) parseEnsureStatement() ast.EnsureNode {
 	if p.current().Type == ast.TokenOr && errNode == nil && block == nil {
 		p.FailWithReport(p.current(), "refinement-legacy-failure-or", "typed failure uses `else`, not `or`",
 			"typed failure uses `else`, not `or`; `or` joins assertion alternatives.",
-			"write `ensure x is Foo() else MyError()` instead of `… or MyError()`")
+			"write `ensure x is Foo() else MyError{}` instead of `… or MyError{}`")
 	}
 
 	return ast.EnsureNode{

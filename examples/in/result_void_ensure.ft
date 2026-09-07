@@ -9,7 +9,7 @@ error NeedFailed {reason: String}
 
 func need(ok Bool) {
 	ensure ok is True()
-	    else NeedFailed({reason: "need failed"})
+	    else NeedFailed{reason: "need failed"}
 }
 
 func run(ok Bool) {

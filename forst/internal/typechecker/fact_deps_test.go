@@ -46,7 +46,7 @@ package main
 type ActiveStatus = "pending" | "processing"
 error InvalidStatus {}
 func check(status String) {
-    ensure status is ActiveStatus else InvalidStatus()
+    ensure status is ActiveStatus else InvalidStatus{}
 }
 func main() {}
 `

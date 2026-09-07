@@ -38,7 +38,7 @@ error E { message: String }
 
 func check(b Bool) {
 	ensure b
-		else E({message: "no"})
+		else E{message: "no"}
 	return 1
 }
 `
@@ -132,7 +132,7 @@ error E { message: String }
 type P = { n: Int }
 
 func (p *P) errMsg(msg String): E {
-	return E({message: msg})
+	return E{message: msg}
 }
 
 func (p *P) bad(ok Bool) {
@@ -165,7 +165,7 @@ error E { message: String }
 
 func bad(ok Bool, kw String) {
 	ensure ok is True()
-		else E({message: "bad " + kw})
+		else E{message: "bad " + kw}
 }
 
 func sibling() {}

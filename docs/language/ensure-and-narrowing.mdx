@@ -28,7 +28,7 @@ error FlagFailed { reason: String }
 
 func checkFlag(ok Bool) {
 	ensure ok
-		else FlagFailed({ reason: "flag was false" })
+		else FlagFailed{ reason: "flag was false" }
 	return "ok"
 }
 ```
@@ -45,7 +45,7 @@ error NeedFailed { reason: String }
 
 func need(ok Bool) {
 	ensure ok
-		else NeedFailed({ reason: "need failed" })
+		else NeedFailed{ reason: "need failed" }
 }
 
 func run(ok Bool) {
@@ -97,7 +97,7 @@ See the [full list of constraints](/language/shapes-and-constraints#reference).
 Use `else` when failure should return a specific error:
 
 ```ft
-ensure speed is LessThan(100) else TooFast()
+ensure speed is LessThan(100) else TooFast{}
 ```
 
 The expression after `else` runs only when the check fails. It can be a named
@@ -108,7 +108,7 @@ ensure ok is True()
 	else p.errMsg("bad")
 
 ensure ok is True()
-	else E({ message: "bad " + kw })
+	else E{ message: "bad " + kw }
 ```
 
 ## Short forms at a glance
@@ -202,7 +202,7 @@ Use `or` to join several acceptable checks on the same value.
 ensure password
     is Strong()
     or Passkey()
-    else InvalidCredential()
+    else InvalidCredential{}
 ```
 
 The check passes when `password` satisfies either `Strong()` or `Passkey()`.
@@ -215,7 +215,7 @@ ensure status
     is Pending()
     or Processing()
     or Retrying()
-    else InvalidStatus()
+    else InvalidStatus{}
 ```
 
 The check continues if `status` matches any listed condition. Any other value
@@ -235,7 +235,7 @@ is (task Task) Actionable() {
 }
 ```
 
-Callers can then write `ensure task is Actionable() else InactiveTask()`.
+Callers can then write `ensure task is Actionable() else InactiveTask{}`.
 
 ### Syntax rules for `or`
 
@@ -260,7 +260,7 @@ type ActiveStatus =
     | "processing"
 
 func check(status String) {
-	ensure status is ActiveStatus else InvalidStatus()
+	ensure status is ActiveStatus else InvalidStatus{}
 }
 ```
 
@@ -272,7 +272,7 @@ type HttpPort = Int.Min(1).Max(65535)
 func listen(port HttpPort) {}
 
 func serve(port Int) {
-	ensure port is HttpPort else InvalidPort()
+	ensure port is HttpPort else InvalidPort{}
 	listen(port)
 }
 ```
@@ -330,7 +330,7 @@ func ship(order Order.Shippable()) {
 ### Establish and reuse a refinement
 
 ```ft
-ensure order is Shippable() else CannotShip()
+ensure order is Shippable() else CannotShip{}
 ship(order)
 ```
 
@@ -342,7 +342,7 @@ knows that `order` already satisfied `Shippable()`.
 Writing to a field that a check depends on invalidates that refinement.
 
 ```ft
-ensure order is Shippable() else CannotShip()
+ensure order is Shippable() else CannotShip{}
 order.address.country = nil
 ship(order) // Error: order no longer satisfies Shippable
 ```
@@ -363,7 +363,7 @@ refinement.
 Writes to unrelated fields leave existing facts intact.
 
 ```ft
-ensure order is Shippable() else CannotShip()
+ensure order is Shippable() else CannotShip{}
 order.lastViewedAt = 1700000000
 ship(order) // Still valid: lastViewedAt is not a dependency of Shippable
 ```

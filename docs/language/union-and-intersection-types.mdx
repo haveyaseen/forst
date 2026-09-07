@@ -34,7 +34,7 @@ Use `ensure` with the bare type name to validate untrusted input at runtime:
 
 ```ft
 def updateStatus(raw String) {
-    ensure raw is TaskStatus else BadStatus()
+    ensure raw is TaskStatus else BadStatus{}
     // raw is narrowed to TaskStatus here
 }
 ```

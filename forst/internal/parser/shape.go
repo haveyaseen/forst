@@ -298,7 +298,7 @@ func (p *Parser) parseShapeLiteral(opts ShapeLiteralOpts) ast.ShapeNode {
 				fields[name] = p.parseShapeFieldTypeAfterColon(name, ShapeFieldTypeOpts{InShapeLiteral: true})
 			} else {
 				// Parse as expression so concat / calls work in shape field values
-				// (e.g. E({message: "a" + b})).
+				// (e.g. E{message: "a" + b}).
 				val := p.parseExpression()
 				p.log.WithFields(logrus.Fields{
 					"fieldName": name,

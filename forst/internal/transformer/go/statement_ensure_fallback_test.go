@@ -73,7 +73,7 @@ func TestEnsureFailureErrorExpr_customOrGeneric(t *testing.T) {
 	}
 }
 
-func TestTransformEnsureErrorFallback_nominalErrorPayload(t *testing.T) {
+func TestTransformEnsureErrorFallback_nominalErrorStructLiteral(t *testing.T) {
 	t.Parallel()
 	log := setupTestLogger(nil)
 	tc := setupTypeChecker(log)
@@ -88,13 +88,12 @@ func TestTransformEnsureErrorFallback_nominalErrorPayload(t *testing.T) {
 		},
 	}
 	tr := setupTransformer(tc, log)
-	got, err := tr.transformEnsureErrorFallback(ast.EnsureErrorCall{
-		ErrorType: "NotOk",
-		ErrorArgs: []ast.ExpressionNode{
-			ast.ShapeNode{
-				Fields: map[string]ast.ShapeFieldNode{
-					"msg": {Node: ast.StringLiteralNode{Value: "bad"}},
-				},
+	bt := ast.TypeIdent("NotOk")
+	got, err := tr.transformEnsureErrorFallback(ast.EnsureErrorExpr{
+		Expr: ast.ShapeNode{
+			BaseType: &bt,
+			Fields: map[string]ast.ShapeFieldNode{
+				"msg": {Node: ast.StringLiteralNode{Value: "bad"}},
 			},
 		},
 	})
@@ -102,7 +101,7 @@ func TestTransformEnsureErrorFallback_nominalErrorPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := goExprString(t, got)
-	if !strings.Contains(s, `NotOk{msg: "bad"}`) || strings.Contains(s, `NotOk(NotOk`) {
+	if !strings.Contains(s, `NotOk{`) || !strings.Contains(s, `"bad"`) {
 		t.Fatalf("nominal fallback: %s", s)
 	}
 }

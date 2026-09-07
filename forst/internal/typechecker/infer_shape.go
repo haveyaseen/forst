@@ -22,12 +22,15 @@ func (tc *TypeChecker) inferShapeType(shape ast.ShapeNode, expectedType *ast.Typ
 		"expectedType": expectedType,
 	}).Debug("Inferring shape type")
 
-	// If the shape has a BaseType, use it directly
-	if shape.BaseType != nil {
+	// Typed composite literal TypeName{ … }: use BaseType, validating nominal error payloads.
+	if shape.BaseType != nil && *shape.BaseType != ast.TypeShape {
 		tc.log.WithFields(logrus.Fields{
 			"function": "inferShapeType",
 			"baseType": *shape.BaseType,
 		}).Debug("Using BaseType for shape literal")
+		if err := tc.validateNominalErrorStructLiteral(shape); err != nil {
+			return ast.TypeNode{}, err
+		}
 		return ast.TypeNode{Ident: *shape.BaseType}, nil
 	}
 

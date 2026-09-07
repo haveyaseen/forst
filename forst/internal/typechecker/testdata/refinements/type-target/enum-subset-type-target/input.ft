@@ -17,7 +17,7 @@ error InvalidStatus {}
 func consumeActiveStatus(s ActiveStatus) {}
 
 func check(status Status) {
-	ensure status is ActiveStatus else InvalidStatus()
+	ensure status is ActiveStatus else InvalidStatus{}
 	consumeActiveStatus(status)
 }
 

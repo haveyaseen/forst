@@ -347,8 +347,8 @@ func TestFormatSource_multiAssertionEnsure_wrapsEachLine(t *testing.T) {
 	const src = `package main
 
 func f(password String, status String) {
-	ensure password is Strong() or Passkey() else InvalidCredential()
-	ensure status is Pending() or Processing() or Retrying() else InvalidCredential()
+	ensure password is Strong() or Passkey() else InvalidCredential{}
+	ensure status is Pending() or Processing() or Retrying() else InvalidCredential{}
 	ensure status is Pending() or Processing()
 }
 `
@@ -365,12 +365,12 @@ func f(password String, status String) {
 	ensure password
 	    is Strong()
 	    or Passkey()
-	    else InvalidCredential()
+	    else InvalidCredential{}
 	ensure status
 	    is Pending()
 	    or Processing()
 	    or Retrying()
-	    else InvalidCredential()
+	    else InvalidCredential{}
 	ensure status
 	    is Pending()
 	    or Processing()
@@ -393,7 +393,7 @@ func TestFormatSource_ensureOr_putsOrOnNextLineIndentedFour(t *testing.T) {
 	const src = `package main
 
 func f(name String) {
-	ensure name is Min(1) else TooShort("msg")
+	ensure name is Min(1) else TooShort{message: "msg"}
 }
 `
 	log := logrus.New()

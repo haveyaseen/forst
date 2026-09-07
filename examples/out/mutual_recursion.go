@@ -1,4 +1,5 @@
 package main
+
 // P: TypeDefShapeExpr({n: Int})
 type P struct {
 	n int

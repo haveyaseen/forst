@@ -1,6 +1,8 @@
 package main
+
 // ExprList: TypeDefAssertionExpr(Array(String))
 type ExprList []string
+
 // P: TypeDefShapeExpr({n: Int})
 type P struct {
 	n int

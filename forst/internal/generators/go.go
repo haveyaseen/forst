@@ -13,22 +13,31 @@ import (
 
 var formatGoNode = format.Node
 
-// GenerateGoCode generates Go code from a Go AST with consistent ordering
+// GenerateGoCode generates Go code from a Go AST with consistent ordering.
+//
+// Pipeline (each step earns its keep):
+//  1. Sort decls/fields and merge imports — gofmt never reorders these.
+//  2. format.Node — AST → text (synthetic ASTs have no FileSet gaps).
+//  3. ensureBlankLinesBetweenTopLevelDecls — format.Source preserves blank
+//     lines between same-kind decls but does not insert them.
+//  4. format.Source — final gofmt so editor-on-save is a no-op (package blank,
+//     import spacing, future gofmt rules). Cheap on small emit files.
 func GenerateGoCode(goFile *goast.File) (string, error) {
 	var buf bytes.Buffer
 	fset := token.NewFileSet()
 
-	// Sort while imports are still separate one-spec decls (SortImports needs
-	// real positions for parenthesized blocks). Then merge into one import ().
-	goast.SortImports(fset, goFile)
 	sortDeclarations(goFile)
 	sortStructFields(goFile)
-	sortMergedImportSpecs(goFile)
 
 	if err := formatGoNode(&buf, fset, goFile); err != nil {
 		return "", fmt.Errorf("failed to format Go code: %w", err)
 	}
-	return ensureBlankLinesBetweenTopLevelDecls(buf.String()), nil
+	spaced := ensureBlankLinesBetweenTopLevelDecls(buf.String())
+	formatted, err := format.Source([]byte(spaced))
+	if err != nil {
+		return "", fmt.Errorf("failed to gofmt generated code: %w", err)
+	}
+	return string(formatted), nil
 }
 
 // ensureBlankLinesBetweenTopLevelDecls inserts blank lines between consecutive
@@ -118,7 +127,7 @@ func sortDeclarations(file *goast.File) {
 	file.Decls = append(file.Decls, types...)
 	file.Decls = append(file.Decls, funcs...)
 
-	// Keep File.Imports in sync with merged import specs for SortImports/tools.
+	// Keep File.Imports in sync with the merged import block.
 	file.Imports = nil
 	for _, decl := range imports {
 		gd, ok := decl.(*goast.GenDecl)
@@ -134,7 +143,8 @@ func sortDeclarations(file *goast.File) {
 }
 
 // mergeImportDecls collapses one-or-many IMPORT GenDecls into a single decl.
-// Two or more specs use a parenthesized import block (gofmt-stable).
+// Two or more specs use a parenthesized import block; format.Node then sorts
+// the specs by path (no need for a separate sort pass).
 func mergeImportDecls(imports []goast.Decl) []goast.Decl {
 	if len(imports) == 0 {
 		return imports
@@ -171,35 +181,6 @@ func mergeImportDecls(imports []goast.Decl) []goast.Decl {
 		gd.Rparen = 1
 	}
 	return []goast.Decl{gd}
-}
-
-// sortMergedImportSpecs orders specs inside the merged import block by path
-// (same primary key as go/ast.SortImports), without needing FileSet positions.
-func sortMergedImportSpecs(file *goast.File) {
-	for _, decl := range file.Decls {
-		gd, ok := decl.(*goast.GenDecl)
-		if !ok || gd.Tok != token.IMPORT || len(gd.Specs) < 2 {
-			continue
-		}
-		sort.SliceStable(gd.Specs, func(i, j int) bool {
-			return importSpecSortKey(gd.Specs[i]) < importSpecSortKey(gd.Specs[j])
-		})
-		file.Imports = nil
-		for _, spec := range gd.Specs {
-			if is, ok := spec.(*goast.ImportSpec); ok {
-				file.Imports = append(file.Imports, is)
-			}
-		}
-		return
-	}
-}
-
-func importSpecSortKey(spec goast.Spec) string {
-	is, ok := spec.(*goast.ImportSpec)
-	if !ok || is.Path == nil {
-		return ""
-	}
-	return is.Path.Value
 }
 
 // getDeclName gets the name of a declaration for sorting

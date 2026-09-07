@@ -1,4 +1,5 @@
 package main
+
 // Inner: TypeDefShapeExpr({Value: Int})
 type Inner struct {
 	Value int

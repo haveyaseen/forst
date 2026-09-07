@@ -33,7 +33,7 @@ type MoveResponse struct {
 
 func ApplyMove(req MoveRequest) (MoveResponse, error) {
 	if !G_CkDVLU3nSxq(req.State) {
-		return MoveResponse{State: GameState{Status: "", Cells: nil, NextPlayer: ""}, Message: ""}, errors.New("ensure req.state is GameState.ValidBoard(): want GameState.ValidBoard()")
+		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, errors.New("ensure req.state is GameState.ValidBoard(): want GameState.ValidBoard()")
 	}
 	playing := req.State.Status == "playing"
 	if !playing {
@@ -41,22 +41,22 @@ func ApplyMove(req MoveRequest) (MoveResponse, error) {
 	}
 	row := req.Row
 	if row <= -1 {
-		return MoveResponse{Message: "", State: GameState{Cells: nil, NextPlayer: "", Status: ""}}, invalidMove("row must be >= 0")
+		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("row must be >= 0")
 	}
 	if row >= 3 {
-		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("row must be <= 2")
+		return MoveResponse{Message: "", State: GameState{Status: "", Cells: nil, NextPlayer: ""}}, invalidMove("row must be <= 2")
 	}
 	col := req.Col
 	if col <= -1 {
-		return MoveResponse{State: GameState{Status: "", Cells: nil, NextPlayer: ""}, Message: ""}, invalidMove("col must be >= 0")
+		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, invalidMove("col must be >= 0")
 	}
 	if col >= 3 {
-		return MoveResponse{State: GameState{Status: "", Cells: nil, NextPlayer: ""}, Message: ""}, invalidMove("col must be <= 2")
+		return MoveResponse{State: GameState{NextPlayer: "", Status: "", Cells: nil}, Message: ""}, invalidMove("col must be <= 2")
 	}
 	idx := cellIndex(row, col)
 	cellEmpty := req.State.Cells[idx] == ""
 	if !cellEmpty {
-		return MoveResponse{State: GameState{Cells: nil, NextPlayer: "", Status: ""}, Message: ""}, CellTaken{Row: row, Col: col}
+		return MoveResponse{State: GameState{NextPlayer: "", Status: "", Cells: nil}, Message: ""}, CellTaken{Row: row, Col: col}
 	}
 	next := setCell(cloneCells(req.State.Cells), idx, req.State.NextPlayer)
 	np := opponent(req.State.NextPlayer)

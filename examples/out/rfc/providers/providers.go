@@ -1,4 +1,5 @@
 package providers_demo
+
 // Clock: TypeDefShapeExpr({now: ?})
 type Clock interface {
 	now() int

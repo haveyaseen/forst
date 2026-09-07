@@ -1,4 +1,5 @@
 package auth
+
 // Logger: TypeDefShapeExpr({Info: ?})
 type Logger interface {
 	Info(msg string)

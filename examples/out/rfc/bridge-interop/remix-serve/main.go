@@ -76,7 +76,7 @@ func AddTodo(input AddTodoRequest) (AddTodoResponse, error) {
 	println("api:AddTodo:" + input.Title)
 	created, createdErr := forst_bridge_callsync_legacy_todos_js_addTodo(input.Title)
 	if createdErr != nil {
-		return AddTodoResponse{Id: "", Title: "", Status: ""}, createdErr
+		return AddTodoResponse{Status: "", Id: "", Title: ""}, createdErr
 	}
 	return AddTodoResponse{Id: created.Id, Title: created.Title, Status: created.Status}, nil
 }
@@ -85,7 +85,7 @@ func CompleteTodo(input CompleteTodoRequest) (CompleteTodoResponse, error) {
 	println("api:CompleteTodo:" + input.Id)
 	updated, updatedErr := forst_bridge_callsync_legacy_todos_js_toggleTodo(input.Id)
 	if updatedErr != nil {
-		return CompleteTodoResponse{Title: "", Status: "", Id: ""}, updatedErr
+		return CompleteTodoResponse{Status: "", Id: "", Title: ""}, updatedErr
 	}
 	return CompleteTodoResponse{Id: updated.Id, Title: updated.Title, Status: updated.Status}, nil
 }
@@ -94,7 +94,7 @@ func GetDashboard() (T_7nWLvcjQ76D, error) {
 	println("api:GetDashboard")
 	open, openErr := forst_bridge_callsync_legacy_todos_js_openCount()
 	if openErr != nil {
-		return T_7nWLvcjQ76D{Open: 0.0, RecentTitles: "", ActivityKinds: "", SavedAt: ""}, openErr
+		return T_7nWLvcjQ76D{ActivityKinds: "", SavedAt: "", Open: 0.0, RecentTitles: ""}, openErr
 	}
 	snap, snapErr := forst_bridge_callasync_legacy_todos_js_persistSnapshot()
 	if snapErr != nil {
@@ -111,7 +111,7 @@ func ListTodos() (T_D415raHQ7uQ, error) {
 	}
 	open, openErr := forst_bridge_callsync_legacy_todos_js_openCount()
 	if openErr != nil {
-		return T_D415raHQ7uQ{Open: 0.0, Done: 0.0, Encoded: ""}, openErr
+		return T_D415raHQ7uQ{Encoded: "", Open: 0.0, Done: 0.0}, openErr
 	}
 	total, totalErr := forst_bridge_callsync_legacy_todos_js_todoCount()
 	if totalErr != nil {

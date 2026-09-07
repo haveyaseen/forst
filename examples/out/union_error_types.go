@@ -1,4 +1,5 @@
 package main
+
 // ErrKind is a closed union of nominal errors (only these types implement it).
 type ErrKind interface {
 	isErrKind()

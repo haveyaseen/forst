@@ -1,6 +1,7 @@
 package main
 
 import strconv "strconv"
+
 // Q: TypeDefShapeExpr({n: Int})
 type Q struct {
 	n int

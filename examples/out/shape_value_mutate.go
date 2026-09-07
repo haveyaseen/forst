@@ -1,4 +1,5 @@
 package main
+
 // Acc: TypeDefShapeExpr({n: Int})
 type Acc struct {
 	n int

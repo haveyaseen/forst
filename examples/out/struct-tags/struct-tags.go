@@ -1,4 +1,5 @@
 package main
+
 // Config: TypeDefShapeExpr({host: String, port: Int, plain: Int})
 type Config struct {
 	host  string

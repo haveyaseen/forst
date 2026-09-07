@@ -1,6 +1,7 @@
 package main
 
 import errors "errors"
+
 // AppContext: TypeDefShapeExpr({sessionId: Pointer(String), user: Pointer(User)})
 type AppContext struct {
 	sessionId *string
@@ -22,6 +23,7 @@ type T_488eVThFocF struct {
 }
 
 type T_PBoS2ej5ec7 string
+
 // User: TypeDefShapeExpr({name: String})
 type User struct {
 	name string

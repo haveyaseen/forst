@@ -1,4 +1,5 @@
 package main
+
 // EchoRequest: TypeDefShapeExpr({message: String})
 type EchoRequest struct {
 	Message string `json:"message"`

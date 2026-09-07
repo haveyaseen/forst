@@ -10,6 +10,53 @@ import (
 	"testing"
 )
 
+func TestGenerateGoCode_blankLineAfterPackageMatchesGofmt(t *testing.T) {
+	t.Parallel()
+	f := &ast.File{
+		Name: ast.NewIdent("main"),
+		Decls: []ast.Decl{
+			&ast.GenDecl{
+				Tok: token.TYPE,
+				Doc: &ast.CommentGroup{List: []*ast.Comment{{Text: "// EchoRequest: TypeDefShapeExpr({message: String})"}}},
+				Specs: []ast.Spec{
+					&ast.TypeSpec{
+						Name: ast.NewIdent("EchoRequest"),
+						Type: &ast.StructType{Fields: &ast.FieldList{
+							List: []*ast.Field{
+								{Names: []*ast.Ident{ast.NewIdent("message")}, Type: ast.NewIdent("string")},
+							},
+						}},
+					},
+				},
+			},
+			&ast.FuncDecl{
+				Name: ast.NewIdent("Echo"),
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{List: []*ast.Field{
+						{Names: []*ast.Ident{ast.NewIdent("input")}, Type: ast.NewIdent("EchoRequest")},
+					}},
+					Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("EchoRequest")}}},
+				},
+				Body: &ast.BlockStmt{},
+			},
+		},
+	}
+	out, err := GenerateGoCode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(out, "package main\n\n// EchoRequest:") {
+		t.Fatalf("expected blank line after package clause before doc comment, got:\n%s", out)
+	}
+	formatted, err := format.Source([]byte(out))
+	if err != nil {
+		t.Fatalf("format.Source: %v", err)
+	}
+	if string(formatted) != out {
+		t.Fatalf("gofmt changed emit:\n--- emit ---\n%s\n--- gofmt ---\n%s", out, formatted)
+	}
+}
+
 func TestGenerateGoCode_sortsFuncDeclsByName(t *testing.T) {
 	f := &ast.File{
 		Name: ast.NewIdent("p"),

@@ -822,15 +822,7 @@ func (p *printer) printWith(w ast.WithNode) (string, error) {
 	var b strings.Builder
 	b.WriteString("with ")
 	if shape, ok := w.Wiring.(ast.ShapeNode); ok {
-		oneLine, err := p.printShapeOneLine(shape)
-		if err != nil {
-			return "", err
-		}
-		compactHead := "with " + oneLine + " {"
-		if len(compactHead) <= p.effectiveTypeDefLineWidth() {
-			b.WriteString(oneLine)
-			b.WriteString(" {\n")
-		} else {
+		if p.shapeShouldUseMultiline(shape) {
 			fieldIndent := p.depth + 1
 			wiring, err := p.printShapeMultiline(shape, fieldIndent)
 			if err != nil {
@@ -838,6 +830,24 @@ func (p *printer) printWith(w ast.WithNode) (string, error) {
 			}
 			b.WriteString(wiring)
 			b.WriteString(" {\n")
+		} else {
+			oneLine, err := p.printShapeOneLine(shape)
+			if err != nil {
+				return "", err
+			}
+			compactHead := "with " + oneLine + " {"
+			if len(compactHead) <= p.effectiveTypeDefLineWidth() {
+				b.WriteString(oneLine)
+				b.WriteString(" {\n")
+			} else {
+				fieldIndent := p.depth + 1
+				wiring, err := p.printShapeMultiline(shape, fieldIndent)
+				if err != nil {
+					return "", err
+				}
+				b.WriteString(wiring)
+				b.WriteString(" {\n")
+			}
 		}
 	} else {
 		wiring, err := p.printExpr(w.Wiring)
@@ -1177,11 +1187,15 @@ func (p *printer) printCall(c ast.FunctionCallNode) (string, error) {
 	return b.String(), nil
 }
 
-// shapeShouldUseMultiline picks multi-line layout when a one-line shape would exceed the line
-// width budget, or when multiple fields include nested shape literals (keeps nested structure readable).
+// shapeShouldUseMultiline picks multi-line layout when a shape has more than two fields, when a
+// one-line shape would exceed the line width budget, or when multiple fields include nested shape
+// literals (keeps nested structure readable).
 func (p *printer) shapeShouldUseMultiline(s ast.ShapeNode) bool {
 	if len(s.Fields) == 0 {
 		return false
+	}
+	if len(s.Fields) > 2 {
+		return true
 	}
 	oneLine, err := p.printShapeOneLine(s)
 	if err != nil {

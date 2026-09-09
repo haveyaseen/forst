@@ -7,7 +7,7 @@ import OverviewHelloFmt from "/snippets/overview-hello-fmt.mdx";
 import OverviewUserGreet from "/snippets/overview-user-greet.mdx";
 import OverviewPlaceOrderCall from "/snippets/overview-place-order-call.mdx";
 
-Forst extends familiar Go syntax with **structural typing**, constraints, and narrowing. Most `.ft` files look like Go. Where they differ, types behave like validated API schemas.
+Forst extends familiar Go syntax with **structural typing**, **constraints**, and **narrowing**. Most `.ft` files look like Go. Where they differ, types behave like validated API schemas.
 
 ## Aligned with Go
 
@@ -41,7 +41,7 @@ Forst has no exceptions. Failures do not jump out of the call stack, so you can 
 
 Expected failures are values you declare with the **`error`** keyword. Callers handle a named type instead of parsing a message. Checks use **`ensure`** and **`is`**, so validation sits next to the code that depends on it.
 
-See [Ensure and narrowing](/language/ensure-and-narrowing) and [Errors and Result](/language/errors-and-result).
+See [Check a value](/language/check-a-value) and [Return a named error](/language/named-errors).
 
 ## Packages and imports
 
@@ -76,16 +76,19 @@ Forst is not a full Go clone. Several areas are experimental or intentionally di
 
 - **No `panic` / `recover` / `try` / `catch`** as language features. Generated Go may still call panicking third party code.
 - **Go import loading** is partial. See [Mix with Go packages § Caveats](/interop/go#caveats).
-- **Validation and narrowing** have real limits. See [Shapes and constraints](/language/shapes-and-constraints#caveats), [Ensure and narrowing](/language/ensure-and-narrowing#caveats), and [Errors and Result](/language/errors-and-result#caveats).
+- **Validation and narrowing** have real limits. See [Describe a shape](/language/shapes-and-constraints#caveats), [Check a value](/language/check-a-value#caveats), and [Return a named error](/language/named-errors#caveats).
 
 ## What to read next
 
 <CardGroup cols={2}>
-  <Card title="Shapes and constraints" icon="table-columns" href="/language/shapes-and-constraints">
+  <Card title="Describe a shape" icon="table-columns" href="/language/shapes-and-constraints">
     Types as schemas with validation and less boilerplate.
   </Card>
-  <Card title="Ensure and narrowing" icon="filter" href="/language/ensure-and-narrowing">
+  <Card title="Check a value" icon="filter" href="/language/check-a-value">
     Runtime checks tied to the type system.
+  </Card>
+  <Card title="Return a named error" icon="triangle-exclamation" href="/language/named-errors">
+    Named failures and Result returns.
   </Card>
   <Card title="Providers (DI)" icon="plug" href="/language/providers">
     Declare shared services with `use` and wire them at entry points.

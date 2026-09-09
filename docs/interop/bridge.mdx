@@ -4,7 +4,7 @@ description: "Call legacy TypeScript and JavaScript from compiled Forst binaries
 ---
 
 Forst can call functions from existing TypeScript and JavaScript modules while your app runs.
-We call this bridge internally. The Go program starts a JavaScript bridge process and talks to it over a local socket. The bridge process runs `@forst/runtime` to load your modules and run function calls.
+We call this the **bridge**. The Go program starts a JavaScript bridge process and talks to it over a local socket. The bridge process runs `@forst/runtime` to load your modules and run function calls.
 
 Use the `js` import suffix, enable bridge in `ftconfig.json`, and install `@forst/runtime` in your project.
 

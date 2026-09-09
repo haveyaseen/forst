@@ -1,0 +1,88 @@
+---
+title: "Return a named error"
+description: "Give each expected failure a name and fields the caller can use."
+sidebarTitle: "Return a named error"
+---
+
+import ErrorsNominal from "/snippets/errors-nominal.mdx";
+import EnsureCatalog from "/snippets/ensure-catalog.mdx";
+import EnsureGreetTabs from "/snippets/ensure-greet-tabs.mdx";
+
+Use a **named error** for an expected failure that your application can handle.
+Examples include missing stock, invalid input, and a declined payment. Each
+failure gets a stable name. Callers can respond to the error without parsing
+its message.
+
+## Declare a failure
+
+Declare each kind of failure with the **`error`** keyword. Add fields when the caller needs
+details about what went wrong.
+
+<ErrorsNominal />
+
+These two errors remain different types even if their fields later become the
+same. The generated Go types implement the standard `error` interface.
+
+## Return it from a check
+
+Use `ensure … else ErrorName{…}` when a failed check should return a known
+error. The function stops at that point and gives the error to its caller.
+
+Here `in` is the order request and `catalog` maps SKUs to quantities:
+
+<EnsureCatalog />
+
+The first check requires `avail` to contain a successful value. The second
+check returns `InsufficientStock` with details that the caller can use. See
+[Check a value](/language/check-a-value) for how `ensure` works.
+
+## Start with an empty error
+
+An error can carry no fields when the name alone is enough:
+
+<EnsureGreetTabs />
+
+`EmptyName` has no fields. The caller only needs to know that the name was
+empty.
+
+## What generated Go looks like
+
+In Go, you usually declare a struct and add an `Error()` method. Forst's
+`error Name { … }` declaration creates both parts from one declaration. The
+generated result remains an ordinary Go error.
+
+## Functions that can fail
+
+A function that can return these errors becomes a **`Result`**. The caller checks
+success before using the value. See
+[Functions that can fail](/language/result).
+
+## Caveats
+
+Named errors are experimental. Check the
+[roadmap](/resources/roadmap) before relying on edge cases in production.
+
+Error creation through `ensure`, type merging after `else`, and TypeScript
+`_tag` output are still maturing. Treat generated payloads as evolving. See
+[Generate client types](/interop/invoke/generate-types#caveats).
+
+## Examples
+
+See the error handling examples on GitHub:
+
+* [`examples/in/nominal_error.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/nominal_error.ft)
+* [`examples/in/union_error_types.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/union_error_types.ft)
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Functions that can fail" icon="circle-nodes" href="/language/result">
+    Result returns and Ok / Err checks.
+  </Card>
+  <Card title="Check a value" icon="filter" href="/language/check-a-value">
+    How ensure connects checks to control flow.
+  </Card>
+  <Card title="List alternatives" icon="code-branch" href="/language/union-and-intersection-types">
+    Define a closed set of named errors.
+  </Card>
+</CardGroup>

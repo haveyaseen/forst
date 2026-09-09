@@ -1,15 +1,16 @@
 ---
 title: "Errors and Result"
 description: "Model expected failures as named errors and handle them with Result."
+hidden: true
 ---
 
 import ErrorsNominal from "/snippets/errors-nominal.mdx";
-import ErrorsEnsureStock from "/snippets/errors-ensure-stock.mdx";
+import EnsureCatalog from "/snippets/ensure-catalog.mdx";
 import ErrorsNotPositive from "/snippets/errors-not-positive.mdx";
 import ErrorsOkIntMain from "/snippets/errors-ok-int-main.mdx";
 import ErrorsGF from "/snippets/errors-g-f.mdx";
 
-Use a named error for an expected failure that your application can handle.
+Use a **named error** for an expected failure that your application can handle.
 Examples include missing stock, invalid input, and a declined payment. A
 `Result` records that a function can either return a value or one of these
 errors.
@@ -69,7 +70,7 @@ without promotion.
 Use `ensure … else error` when a failed check should return a known error.
 The function stops at that point and gives the error to its caller.
 
-<ErrorsEnsureStock />
+<EnsureCatalog />
 
 The first check requires `avail` to contain a successful value. The second
 check returns `InsufficientStock` with details that the caller can use.

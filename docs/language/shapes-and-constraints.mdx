@@ -1,6 +1,7 @@
 ---
-title: "Shapes and constraints"
+title: "Describe a shape"
 description: "Define API boundaries as types with built-in validation."
+sidebarTitle: "Describe a shape"
 ---
 
 import CatalogOrder from "/snippets/catalog-order.mdx";
@@ -8,40 +9,25 @@ import ShapesConstraintChaining from "/snippets/shapes-constraint-chaining.mdx";
 import ShapesPlaceOrderTags from "/snippets/shapes-place-order-tags.mdx";
 import ShapesAddressCustomer from "/snippets/shapes-address-customer.mdx";
 
-Whenever you deal with untrusted data, you need validation as far up as possible. Have the compiler prove these rules where values are known at compile time, and have it enforce them at runtime as well.
-
-## Manual validation in Go
-
-Go handlers often repeat input validation manually:
-
-```go
-type PlaceOrderInput struct {
-	StockKeepingUnit string
-	Quantity         int
-}
-
-func placeOrder(in PlaceOrderInput) (string, error) {
-	if len(in.StockKeepingUnit) < 1 || len(in.StockKeepingUnit) > 64 {
-		return "", errors.New("invalid stock keeping unit")
-	}
-	if in.Quantity < 1 || in.Quantity > 99 {
-		return "", errors.New("invalid quantity")
-	}
-	// business logic...
-}
-```
-Go structs define field names and types, and interfaces specify required methods, but neither can express detailed validation rules like value ranges or formats.
+Whenever you deal with untrusted data, you need validation as far up as
+possible. Have the compiler prove these rules where values are known at compile
+time, and enforce them at runtime as well.
 
 ## Constraints on types
 
-In Forst, types can declare exactly what makes data valid. You attach constraints directly to types, and the compiler enforces them at the API boundary and, where possible, at compile time. This keeps validation clear and central—no more scattered checks.
+In Forst, types can declare exactly what makes data valid. You attach
+**constraints** directly to types, and the compiler enforces them at the API
+boundary and, where possible, at compile time.
 
 <CatalogOrder />
 
-When `placeOrder` runs, the compiler has already proven the shape at compile time where values are known; use `ensure` (or explicit checks) for dynamic input. Invalid SKUs and quantities never reach your catalog logic.
+When `placeOrder` runs, the compiler has already proven the shape at compile
+time where values are known. Use [`ensure`](/language/check-a-value) for
+dynamic input. Invalid SKUs and quantities never reach your catalog logic.
 
 <Note>
-  Forst also lets you define **your own** rules for types with [type guards](/language/type-guards).
+  Forst also lets you define **your own** rules for types with
+  [**type guards**](/language/name-a-rule).
 </Note>
 
 ## Built-in constraints
@@ -53,15 +39,15 @@ Constraints appear in two places:
 | **On types** (shapes, params) | `String.Min(1).Max(64)` | Validate at the boundary when data enters |
 | **In function bodies** | `ensure x is Min(1)` | Assert invariants at runtime |
 
-The same built-in names work in both. For `Result` narrowing (`Ok`, `Err`) and pointer checks (`Nil`, `Present`), see [Ensure and narrowing](/language/ensure-and-narrowing).
+The same built-in names work in both. For `Result` narrowing (`Ok`, `Err`) and
+pointer checks (`Nil`, `Present`), see
+[Check a value](/language/check-a-value).
 
 ### Chaining
 
 Constraints **chain with dots** on the base type. All chained rules must pass:
 
 <ShapesConstraintChaining />
-
-
 
 ### Reference
 
@@ -86,9 +72,12 @@ Constraints **chain with dots** on the base type. All chained rules must pass:
 | **`Bool`** | `.True()`, `.False()` | Must be `true` or `false` |
 | **`*T` (pointers)** | `.Nil()`, `.Present()` | Optional vs required fields |
 
-`String.Min` and `Max` limit length by Unicode character count. That matches JSON Schema `minLength` and `maxLength`. Use `MinBytes` and `MaxBytes` when you need a UTF-8 size limit, such as a header or payload cap.
+`String.Min` and `Max` limit length by Unicode character count. That matches
+JSON Schema `minLength` and `maxLength`. Use `MinBytes` and `MaxBytes` when you
+need a UTF-8 size limit, such as a header or payload cap.
 
-Use constraints on struct fields, function parameters, and nested shapes. Validation follows the data structure, including deeply nested records.
+Use constraints on struct fields, function parameters, and nested shapes.
+Validation follows the data structure, including deeply nested records.
 
 Nested constraints on an order input, including tags on the payload:
 
@@ -96,66 +85,90 @@ Nested constraints on an order input, including tags on the payload:
 
 **Ensure-only or reserved** (not typically chained on types):
 
-- **`Ok()` / `Err()`**: `Result` discriminants; use in `ensure x is Ok()` ([Ensure and narrowing](/language/ensure-and-narrowing))
+- **`Ok()` / `Err()`**: `Result` discriminants; use in `ensure order is Ok()`
+  ([Check a value](/language/check-a-value))
 - **`Value(…)`**: literal refinement in assertion types (advanced)
 
 ## Structural shapes
 
-Forst shapes use **field names** (camelCase by convention) and compose like TypeScript interfaces:
+Forst **shapes** use **field names** (camelCase by convention) and compose like
+TypeScript interfaces:
 
 <ShapesAddressCustomer />
 
-Invalid nested data fails at the same boundary. You do not re-walk the tree in application code.
+Invalid nested data fails at the same boundary. You do not re-walk the tree in
+application code.
 
 ## Caveats
 
 ### Constraints stay small and composable
 
-Built-in constraints are a **fixed set of simple checks**: length, bounds, prefixes, suffixes, and a few similar rules. You combine them with dots (all must pass) and `or` (one must pass). That keeps types readable and lets the compiler reuse the same rules for `ensure`, JSON Schema, and generated clients.
+Built-in constraints are a **fixed set of simple checks**: length, bounds,
+prefixes, suffixes, and a few similar rules. You combine them with dots (all
+must pass) and `or` (one must pass). That keeps types readable and lets the
+compiler reuse the same rules for `ensure`, JSON Schema, and generated clients.
 
-Forst intentionally omits a regex constraint on `String`. Free regular expressions can express almost anything, which replaces clear, composable rules with opaque patterns. Build your formats from simple built-in constraints instead:
+Forst intentionally omits a regex constraint on `String`. Free regular
+expressions can express almost anything, which replaces clear, composable rules
+with opaque patterns. Build your formats from simple built-in constraints
+instead:
 
 ```ft
 type Username = String.Min(3).Max(30).HasPrefix("u_")
 ```
 
-Name the refined type once, then enforce it at the boundary with that name:
+Name the refined type once, then enforce it at the boundary with that name.
+See [Check a value](/language/check-a-value#check-against-a-named-type) for
+`ensure username is Username`.
 
-```ft
-error InvalidUsername {}
-
-func signup(username String) {
-	ensure username is Username else InvalidUsername{}
-}
-```
-
-That is the same runtime check as writing `ensure username is Min(3).Max(30).HasPrefix("u_")`, and it narrows `username` to `Username`.
-
-For a closed list of allowed values, use a [literal union](/language/union-and-intersection-types) such as `"todo" | "done"`. For richer domain rules, write a [type guard](/language/type-guards). If you need a true regular expression, put it in an ordinary function. That validates at runtime. It does not become part of the type’s built-in constraint chain.
+For a closed list of allowed values, use a
+[**literal union**](/language/union-and-intersection-types) such as
+`"todo" | "done"`. For richer domain rules, write a
+[**type guard**](/language/name-a-rule). If you need a true regular expression, put
+it in an ordinary function. That validates at runtime. It does not become part
+of the type’s built-in constraint chain.
 
 ### Write `ensure` to check values at runtime
 
-A constraint on a type records the rule. Runtime checks happen when you write **`ensure`**. Put those checks in handlers that take untrusted input, before the rest of the function uses the value.
+A constraint on a type records the rule. Runtime checks happen when you write
+**`ensure`**. Put those checks in handlers that take untrusted input, before
+the rest of the function uses the value. See
+[Check a value](/language/check-a-value).
 
 ### The compiler only proves values it can see
 
-If the value is a literal in your source, the compiler can prove the constraint when you compile. Request bodies, query params, and other input from outside the program are unknown until the function runs. Write **`ensure`** at that boundary so invalid data never reaches your logic.
+If the value is a literal in your source, the compiler can prove the constraint
+when you compile. Request bodies, query params, and other input from outside
+the program are unknown until the function runs. Write **`ensure`** at that
+boundary so invalid data never reaches your logic.
 
 ### Export fields when you serve JSON
 
-Generated Go structs keep their fields private and omit `json` tags. In-process Go can use those structs as they are. If you marshal the shape to JSON for HTTP, export the fields. Pass **`-export-struct-fields`** on `forst run` or `forst build`. You can also set **`compiler.exportStructFields`** to `true` in `ftconfig.json`.
+Generated Go structs keep their fields private and omit `json` tags. In-process
+Go can use those structs as they are. If you marshal the shape to JSON for
+HTTP, export the fields. Pass **`-export-struct-fields`** on `forst run` or
+`forst build`. You can also set **`compiler.exportStructFields`** to `true` in
+`ftconfig.json`.
 
 ### Generated TypeScript types are structural
 
-`forst generate` emits TypeScript types that match field names and shapes. Constraints such as `String.Min(1)` stay on the Forst side. If you need the same checks in the browser or in Node before you call the server, write them in TypeScript. Calling the Forst server runs the checks you wrote with `ensure`. See [Generate client types § Caveats](/interop/invoke/generate-types#caveats).
+`forst generate` emits TypeScript types that match field names and shapes.
+Constraints such as `String.Min(1)` stay on the Forst side. If you need the
+same checks in the browser or in Node before you call the server, write them in
+TypeScript. Calling the Forst server runs the checks you wrote with `ensure`.
+See [Generate client types § Caveats](/interop/invoke/generate-types#caveats).
 
-## What gets emitted
+## What generated Go looks like
 
-The compiler lowers **`ensure`** checks in the function body to plain Go: `String.Min(1)` becomes a `utf8.RuneCountInString` comparison, `String.MaxBytes(64)` a `len` comparison, `Int.Min(1)` a numeric comparison, and `HasPrefix` / `HasSuffix` / `Contains` call `strings.*` with an auto-added import.
+Generated Go turns **`ensure`** checks in the function body into plain
+comparisons: `String.Min(1)` becomes a `utf8.RuneCountInString` comparison,
+`String.MaxBytes(64)` a `len` comparison, `Int.Min(1)` a numeric comparison,
+and `HasPrefix` / `HasSuffix` / `Contains` call `strings.*` with an auto-added
+import.
 
 ## Examples
 
-See the shape and constraint examples on GitHub
+See the shape and constraint examples on GitHub:
 
 * [`examples/in/basic.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/basic.ft)
 * [`examples/in/ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/ensure.ft)
@@ -163,10 +176,10 @@ See the shape and constraint examples on GitHub
 ## Related
 
 <CardGroup cols={2}>
-  <Card title="Ensure and narrowing" icon="filter" href="/language/ensure-and-narrowing">
-    Assert invariants inside functions with `ensure … is …`.
+  <Card title="Check a value" icon="filter" href="/language/check-a-value">
+    Assert invariants inside functions with ensure … is ….
   </Card>
-  <Card title="Type guards" icon="code-branch" href="/language/type-guards">
+  <Card title="Name a reusable rule" icon="code-branch" href="/language/name-a-rule">
     Reusable custom predicates on your domain types.
   </Card>
 </CardGroup>

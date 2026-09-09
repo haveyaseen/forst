@@ -25,14 +25,7 @@
             "group": "Overview",
             "pages": [
               "index",
-              "why",
-              {
-                "group": "Language overview",
-                "root": "language/overview",
-                "pages": [
-                  "resources/roadmap"
-                ]
-              }
+              "why"
             ]
           },
           {
@@ -43,19 +36,31 @@
             ]
           },
           {
-            "group": "Data validation",
+            "group": "Language",
             "pages": [
-              "language/shapes-and-constraints",
-              "language/ensure-and-narrowing",
-              "language/type-guards",
-              "language/union-and-intersection-types"
-            ]
-          },
-          {
-            "group": "Behavior",
-            "pages": [
-              "language/errors-and-result",
-              "language/providers"
+              "language/overview",
+              {
+                "group": "Validate data",
+                "pages": [
+                  "language/shapes-and-constraints",
+                  "language/check-a-value",
+                  "language/name-a-rule",
+                  "language/union-and-intersection-types"
+                ]
+              },
+              {
+                "group": "Handle failure",
+                "pages": [
+                  "language/named-errors",
+                  "language/result"
+                ]
+              },
+              {
+                "group": "Share services",
+                "pages": [
+                  "language/providers"
+                ]
+              }
             ]
           },
           {
@@ -166,6 +171,21 @@
     }
   },
   "redirects": [
+    {
+      "source": "/language/ensure-and-narrowing",
+      "destination": "/language/check-a-value",
+      "permanent": true
+    },
+    {
+      "source": "/language/type-guards",
+      "destination": "/language/name-a-rule",
+      "permanent": true
+    },
+    {
+      "source": "/language/errors-and-result",
+      "destination": "/language/named-errors",
+      "permanent": true
+    },
     {
       "source": "/interop/node",
       "destination": "/interop/invoke",

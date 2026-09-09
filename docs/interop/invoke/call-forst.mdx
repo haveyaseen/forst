@@ -319,15 +319,15 @@ const program = $auth.VerifyPassword(input).pipe(
 | `@forst/errors/InvokeStreamAborted` | NDJSON stream ended early or a row failed to parse | Retry stream, or fix the streaming handler |
 | `@forst/errors/ContractVersionMismatch` | Client and server contract versions disagree | Upgrade client and server together |
 
-Import invoke helpers from `@forst/errors` in Promise mode or `@forst/errors/effect` in Effect mode (`InvokeRejected`, `isInvokeFailure`, …). Class names stay short. Built-in invoke, harness, and unknown-failure `_tag` strings use the `@forst/errors/` prefix. Domain error tags are namespaced with your npm package name (for example `@forst/tictactoe/CellTaken`). Optional domain namespaces are also available from `@forst/gen/$errors` (for example `errors.auth.NotFound`).
+Import invoke helpers from `@forst/errors` in Promise mode or `@forst/errors/effect` in Effect mode (`InvokeRejected`, `isInvokeFailure`, …). Class names stay short. Built-in invoke, harness, and unknown-failure `_tag` strings use the `@forst/errors/` prefix. Domain error tags are namespaced with your npm package name (for example `@myapp/tictactoe/CellTaken`). Optional domain namespaces are also available from `@forst/gen/$errors` (for example `errors.auth.NotFound`).
 
 ### Domain errors
 
 When a Forst function raises a nominal `error X { ... }`, the server includes structured `errorValue` on the invoke envelope (HTTP contract version `"2"`). The generated client decodes it into a tagged class with the same name as the Forst error type.
 
 ```typescript
-import { $main } from "@forst/tictactoe/main";
-import { $CellTaken } from "@forst/tictactoe/main/errors";
+import { $main } from "@myapp/tictactoe/main";
+import { $CellTaken } from "@myapp/tictactoe/main/errors";
 
 try {
   await $main.PlayMove({ state, row: 1, col: 2 });
@@ -342,10 +342,12 @@ In Effect mode the function error channel includes each inferred domain error, `
 
 ```typescript
 import { Effect } from "effect";
-import { $main } from "@forst/tictactoe/main";
+import { $main } from "@myapp/tictactoe/main";
 
 const program = $main.PlayMove(req).pipe(
-  Effect.catchTag("@forst/tictactoe/CellTaken", (e) => Effect.succeed({ row: e.row, col: e.col }))
+  Effect.catchTag("@myapp/tictactoe/CellTaken", (e) =>
+    Effect.succeed({ row: e.row, col: e.col })
+  )
 );
 ```
 

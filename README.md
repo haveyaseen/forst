@@ -15,7 +15,7 @@ To accomplish this, Forst supports you in four key ways:
 | --- | --- |
 | Go ecosystem | Compiles directly to Go. You get full access to the Go package ecosystem, standard library and build tools. |
 | TypeScript integration | Generates native TS definitions and a client directly from your backend source. No need for intermediate languages like GraphQL or Protobuf just for type safety. |
-| Node.js interop | Call existing Node.js code directly from Forst to keep your existing tools and libraries during migration. |
+| Node.js interop | Call existing Node, Bun or Deno code directly from Forst to keep your existing tools and libraries during migration. |
 | Incremental migration | Allows you to move small parts of your code at a time while your existing codebase keeps running, so you can keep shipping during migration. |
 
 ## Why?
@@ -26,13 +26,11 @@ Forst exists to remove that friction. You can migrate incrementally or write com
 
 ## Examples
 
-Forst code builds on Go foundations. Here is how a handler evolves from a basic executable to full interop and type generation.
-
 ### Hello World
 
-Forst files use the `.ft` extension and support standard Go source structure.
+Ordinary Forst programs look like Go. Files use the `.ft` extension.
 
-```golang
+```ft
 package main
 
 import "fmt"
@@ -42,95 +40,104 @@ func main() {
 }
 ```
 
-### Validation and nominal errors
+More in [docs/language/overview.mdx](docs/language/overview.mdx).
 
-Constraints on types validate boundary data automatically. You declare structured domain errors with `error` and check invariants with `ensure`.
+### Describe a shape
 
-```golang
-type PlaceOrderInput = {
-	stockKeepingUnit: String.Min(1).Max(64),
-	quantity:         Int.Min(1).Max(99),
-}
+Constraints on the type validate boundary data before business logic runs.
 
-error InsufficientStock {
-	requested: Int,
-	available: Int,
-}
-
-func PlaceOrder(in: PlaceOrderInput, available: Int) Result(String, Error) {
-	ensure in.quantity is Max(available) or InsufficientStock({
-		requested: in.quantity,
-		available: available,
-	})
-	return "ORDER-123"
+```ft
+func invite(member {
+	email: String.Min(5).Max(254).Contains("@"),
+	role:  "admin" | "editor" | "viewer",
+}) {
+	// member.email contains "@" and fits common length bounds
+	// member.role is one of admin, editor, viewer
+	println("invite " + member.email + " as " + member.role)
 }
 ```
+
+More in [docs/language/shapes-and-constraints.mdx](docs/language/shapes-and-constraints.mdx).
+
+### Check a value
+
+Declare expected failures with `error`. Use `ensure` so a failed check returns that error and later lines can rely on the condition.
+
+```ft
+error EmptyName {}
+
+func greet(name String) {
+	ensure name is Min(1) else EmptyName{}
+	return "hello, " + name
+}
+```
+
+More in [docs/language/check-a-value.mdx](docs/language/check-a-value.mdx) and [docs/language/named-errors.mdx](docs/language/named-errors.mdx).
 
 ### Go interop
 
-Call standard Go packages or existing Go functions directly in Forst source.
+Import Go packages and call them from Forst. Short `ensure` forms work on bools and errors.
 
-```golang
-import "fmt"
+```ft
+import "os"
+import "path/filepath"
 
-func PlaceOrder(in: PlaceOrderInput, available: Int) Result(String, Error) {
-	ensure in.quantity is Max(available) or InsufficientStock({
-		requested: in.quantity,
-		available: available,
-	})
-	orderID := fmt.Sprintf("ORDER-%d", 123)
-	return orderID
+func openFile(path String) {
+	ensure filepath.IsAbs(path)
+	file, err := os.Open(path)
+	ensure !err
+	return file
 }
 ```
 
-### Node.js interop
+More in [docs/interop/go.mdx](docs/interop/go.mdx). During migration you can also call legacy JavaScript from Forst; see [docs/interop/bridge.mdx](docs/interop/bridge.mdx).
 
-Import existing JavaScript or TypeScript modules into Forst with `import "./path" node` during migration.
+### Call from TypeScript
 
-```golang
-import "./legacy/payment" js
-
-func PlaceOrder(in: PlaceOrderInput, available: Int) Result(String, Error) {
-	ensure in.quantity is Max(available) or InsufficientStock({
-		requested: in.quantity,
-		available: available,
-	})
-	receipt := payment.Charge({ amount: in.quantity * 10 })
-	return receipt.id
-}
-```
-
-### TypeScript client generation
-
-Run `forst generate` to create typed client packages for your frontend. Callers receive end to end type safety without writing schema glue code.
+Run `forst generate` so Node callers import a typed package handle and invoke over HTTP.
 
 ```typescript
-import { $orders } from "@forst/gen/orders";
+import { $auth } from "@forst/gen/auth";
 
-const order = await $orders.PlaceOrder({
-  stockKeepingUnit: "SKU-99",
-  quantity: 2,
+const result = await $auth.VerifyPassword({
+  plainPassword: "secret",
+  passwordHash: "$2a$...",
 });
 ```
 
-### Effect TS interop
+More in [docs/interop/invoke/call-forst.mdx](docs/interop/invoke/call-forst.mdx).
 
-Enable Effect mode in `ftconfig.json` to emit native Effect services and layers.
+### Domain errors
+
+Named Forst errors decode to tagged classes on the client. Use your generated package name (for example `@myapp/tictactoe`).
+
+```typescript
+import { $main } from "@myapp/tictactoe/main";
+import { $CellTaken } from "@myapp/tictactoe/main/errors";
+
+try {
+  await $main.PlayMove({ state, row: 1, col: 2 });
+} catch (error) {
+  if (error instanceof $CellTaken) {
+    console.log(error.row, error.col);
+  }
+}
+```
+
+In Effect mode, catch by tag:
 
 ```typescript
 import { Effect } from "effect";
-import { $orders } from "@forst/gen/orders";
+import { $main } from "@myapp/tictactoe/main";
 
-const program = Effect.gen(function* () {
-  const order = yield* $orders.PlaceOrder({
-    stockKeepingUnit: "SKU-99",
-    quantity: 2,
-  });
-  return order;
-}).pipe(Effect.provide($orders.Default));
-
-await Effect.runPromise(program);
+const program = $main.PlayMove(req).pipe(
+  Effect.catchTag("@myapp/tictactoe/CellTaken", (e) =>
+    Effect.succeed({ row: e.row, col: e.col })
+  )
+);
 ```
+
+More in [docs/interop/invoke/call-forst.mdx](docs/interop/invoke/call-forst.mdx#domain-errors).
 
 ## Features
 
@@ -140,21 +147,21 @@ Highlights from the [docs feature comparison](docs/why.mdx).
 
 | Capability | Forst |
 | --- | --- |
-| Structural typing | Built-in records, signatures, and `is` narrowing |
-| Validation on types | Built-in field constraints; boundary runtime checks |
-| Error handling | `ensure`, nominal `error` types, and `Result`; no exceptions |
-| Mocking and DI | `use` / `with` providers; no external DI framework |
-| Type narrowing | `is` / `ensure` and type guards |
+| Structural typing | [Built-in](docs/language/overview.mdx) records, signatures, and `is` narrowing |
+| Validation on types | [Field constraints](docs/language/shapes-and-constraints.mdx); boundary runtime checks |
+| Error handling | [`ensure`](docs/language/check-a-value.mdx), [named errors](docs/language/named-errors.mdx), and [`Result`](docs/language/result.mdx); no exceptions |
+| Mocking and DI | [`use` / `with`](docs/language/providers.mdx) providers; no external DI framework |
+| Type narrowing | [`is` / `ensure`](docs/language/check-a-value.mdx) and [type guards](docs/language/name-a-rule.mdx) |
 | Goroutines | Native `go` and `defer` via Go output |
 
 ### Interop and adoption
 
 | Capability | Forst |
 | --- | --- |
-| Go module ecosystem | Import Go packages natively |
-| JS / npm ecosystem | Call legacy JS/TS via `import "./path" node` |
-| Shared server ↔ client types | `forst generate` from the same `.ft` source |
-| Call backend from Node | Generated client and HTTP invoke |
+| Go module ecosystem | [Import Go packages](docs/interop/go.mdx) natively |
+| JS / npm ecosystem | Call legacy JS/TS via [`import "./path" js`](docs/interop/bridge.mdx) |
+| Shared server ↔ client types | [`forst generate`](docs/interop/invoke/generate-types.mdx) from the same `.ft` source |
+| Call backend from Node | [Generated client and HTTP invoke](docs/interop/invoke/call-forst.mdx) |
 | Incremental migration | Mix `.ft`, `.go`, and legacy code in one codebase |
 
 See [ROADMAP.md](./ROADMAP.md) for experimental features and planned work.
@@ -170,7 +177,8 @@ See also [PHILOSOPHY.md](./PHILOSOPHY.md) for what guides and motivates us.
 | Package | Purpose |
 | --- | --- |
 | [`@forst/cli`](./packages/cli/README.md) | Forst compiler in JS/TS projects |
-| [`@forst/sidecar`](./packages/sidecar/README.md) | Dev server and HTTP client during migration |
+| [`@forst/runtime`](./packages/runtime/README.md) | Node host for calling legacy JS/TS from Forst |
+| [`@forst/sidecar`](./packages/sidecar/README.md) | Spawn or attach to `forst dev` so Node can invoke Forst over HTTP |
 
 Install the compiler in a Node project:
 
@@ -204,9 +212,9 @@ See [docs/installation.mdx](docs/installation.mdx) for other install paths (npm,
 
 ## TypeScript client output
 
-You can generate **TypeScript types and a small client** from your Forst code so front ends or Node callers get the same shapes your server uses, without copying types by hand.
+`forst generate` writes a typed client under `.forst/client` and links it as `@forst/gen` (or the `packageName` you set in `ftconfig.json`). Front ends and Node callers import the same shapes your server uses, without copying types by hand.
 
-Run `forst generate` with a `.ft` file or a folder of `.ft` files; it writes a `generated/` tree (declarations plus helpers) and a `client/` stub you can wire to your app. The dev server can also expose types over HTTP while you iterate.
+See [docs/interop/invoke/generate-types.mdx](docs/interop/invoke/generate-types.mdx) and [docs/installation.mdx](docs/installation.mdx#generated-typescript-client).
 
 ## Inspirations
 
@@ -216,4 +224,4 @@ We also draw inspiration from:
 
 - **Zod** — constraints and shape guards as composable runtime checks on nested data.
 - **tRPC** — one source of truth for API shapes, with **TypeScript types and a small client** generated from Forst (`forst generate`, `examples/client-integration/`).
-- **Go** and **Rust** — **errors as values** and explicit control flow (`ensure` … `or …`) instead of exceptions.
+- **Go** and **Rust** — **errors as values** and explicit control flow (`ensure` … `else …`) instead of exceptions.

@@ -1,87 +1,71 @@
 ---
-title: "Ensure and narrowing"
-description: "Check that a value is valid before the rest of the function runs."
-hidden: true
+title: "Check a value"
+description: "Language-level early returns as an alternative to manual checks."
+sidebarTitle: "Check a value"
 ---
 
-import EnsureSpeed from "/snippets/ensure-speed.mdx";
-import EnsureGreet from "/snippets/ensure-greet.mdx";
-import EnsureMain from "/snippets/ensure-main.mdx";
+import EnsureGreetTabs from "/snippets/ensure-greet-tabs.mdx";
+import EnsureFulfillBuiltins from "/snippets/ensure-fulfill-builtins.mdx";
+import EnsureOpenFile from "/snippets/ensure-open-file.mdx";
 import EnsureNil from "/snippets/ensure-nil.mdx";
 import EnsureCatalog from "/snippets/ensure-catalog.mdx";
-import EnsureFulfill from "/snippets/ensure-fulfill.mdx";
 import EnsurePlaceOrderOk from "/snippets/ensure-place-order-ok.mdx";
-import EnsureIfOk from "/snippets/ensure-if-ok.mdx";
+import EnsureMain from "/snippets/ensure-main.mdx";
 
-Go programs often check `err != nil` after a call that can fail. People get
-tired of writing that everywhere. **`ensure`** does the same job in one line. You
-write what must be true. If it is not, the function returns an error, or
-`main` exits. If it is true, Forst remembers it, so later lines can rely on
-it.
+Early returns are a best practice that promotes checking required conditions as early as possible so you get bad cases out of the way.
+To make this rule easy to follow, Forst has the **`ensure`** keyword. It allows you to declare what you expect to be true.
 
-Use `ensure` when the next lines only make sense after the check passed. Use
-`if` when both outcomes belong in the same function.
+If it is not, the function returns
+an error (or exits if you're inside `main`). If the condition holds, Forst keeps that knowledge for the lines
+below, so you do not have to check again.
 
 ## Stop unless a value is valid
 
 This `greet` function must not run with an empty name.
 
-<EnsureGreet />
+<EnsureGreetTabs />
 
 If `name` is empty, `greet` returns `EmptyName`. `return "hello, " + name` runs
 only after the check passes.
 
 `is Min(1)` is the condition. `else EmptyName{}` is the error to return when it
-fails. See [Errors and Result](/language/errors-and-result) for how to declare
-named errors.
+fails. See [Return a named error](/language/named-errors) for how to declare
+errors with fields.
 
-The same pattern with a speed limit. The Generated Go tab shows the check as an
-ordinary error return.
+## Use the value after the check
 
-<EnsureSpeed />
+After a successful check, Forst remembers that the condition held and narrows your variable.
+Later lines can use `name` without repeating the bound.
+[Describe a shape](/language/shapes-and-constraints#reference) lists built-in
+conditions such as `LessThan`, `Min`, `Present`, and `Ok`.
 
-If `speed` is 100 or more, `drive` returns `TooFast` and `position` stays
-unchanged. `position += speed` runs only after the check passes.
+## Handle multiple outcomes in the same function
 
-After a successful check, Forst remembers that the condition held. That memory
-is **narrowing**. Later lines can use `name` or `speed` without repeating the
-bound. [Shapes and constraints](/language/shapes-and-constraints#reference)
-lists built-in conditions such as `LessThan`, `Min`, `Present`, and `Ok`.
-
-## Check only in the branch that needs it
-
-Use `if` when both outcomes belong in the function. Use `ensure` inside a
-branch when that branch only makes sense if more checks pass. Facts from those
-`ensure`s hold in that branch. They do not apply after the `if`.
+Use `if` when both outcomes still belong in the function. Use `ensure`
+when the branch you're on only makes sense if more checks pass.
 
 This handler ships a paid order. An unpaid order waits. A paid order must be
 unlocked and must have items:
 
-<EnsureFulfill />
+<EnsureFulfillBuiltins />
 
-`Unlocked` is `order.locked is False()`. `HasItems` is `order.items is Min(1)`.
 If `order.paid` is false, `fulfill` returns `"awaiting payment"` and never
 runs those checks. If it is paid, a locked order returns `OrderLocked` and an
 empty cart returns `EmptyCart`. After both `ensure`s pass, `order.items[0]` is
-safe. After the `if`, Forst does not treat the order as `Unlocked` or
-`HasItems`.
+safe.
+
+But facts derived from `ensure` statements don't survive when you exit the branch. So after the `if`, Forst does not treat the order as unlocked or as having
+items.
+
+For reusable names for those rules, see
+[Name a reusable rule](/language/name-a-rule).
 
 ## Write a shorter check
 
-Go's `filepath.IsAbs` returns a bool. Check that result with `ensure`. You can
+Forst also offers shorthand forms to help with typical use cases. Take Go's `filepath.IsAbs` which returns a `bool`. You can check that result with `ensure` and
 leave out `is True()`:
 
-```ft
-import "os"
-import "path/filepath"
-
-func openFile(path String) {
-	ensure filepath.IsAbs(path)
-	file, err := os.Open(path)
-	ensure !err
-	return file
-}
-```
+<EnsureOpenFile />
 
 If the path is relative, `openFile` returns an error and never opens the file.
 That keeps the open from depending on the process working directory.
@@ -90,14 +74,10 @@ That keeps the open from depending on the process working directory.
 
 The check is the bool that `filepath.IsAbs` returned. Forst does not remember
 that `path` is absolute. Later lines still treat `path` as an ordinary
-`String`. If you then assign `path = "tmp/out.txt"`, `os.Open(path)` still
-typechecks. Another function that needs an absolute path must check again.
-Forst will not reuse this `ensure` as a fact about `path`.
+`String`. If you want Forst to remember that `path` is absolute, put the Go
+call in a [**type guard**](/language/name-a-rule) on `path`.
 
-If you want Forst to remember that `path` is absolute, put the Go call in a
-[type guard](/language/type-guards) on `path`.
-
-The same idea works for pointers, errors, and `Result` values. You write the
+The same idea works for pointers, errors, and **`Result`** values. You write the
 value. Forst fills in the usual check.
 
 ### Continue only when a pointer is empty
@@ -107,11 +87,12 @@ This code stores a value in `slot` only when nothing is there yet.
 <EnsureNil />
 
 `ensure !slot` is the same as `ensure slot is Nil()`. If `slot` already holds a
-pointer, `claim` returns an error and does not overwrite it.
+pointer, `claim` returns `SlotAlreadyTaken` and does not overwrite it.
 
 `open` waits until `claim` succeeds. `ensure claim(7)` is the same as
-`ensure claim(7) is Ok()`. If `claim` fails, `open` returns that error.
-`claim` has no success value. Checking the call is enough.
+`ensure claim(7) is Ok()`. If `claim` fails, `open` returns that same
+`SlotAlreadyTaken` error. `claim` has no success value. Checking the call is
+enough.
 
 `ensure slot` (no `!`) means the pointer is non-nil, the same as
 `ensure slot is Present()`. On a map or array, `Present` and `Nil` mean
@@ -142,7 +123,7 @@ the SKU, the request, and what was available.
 
 When a Go call returns `err`, write `ensure !err`. That is the same as
 `ensure err is Nil()`, and a failed check returns that error. See
-[Handle Go functions with several returns](/language/errors-and-result#handle-go-functions-with-several-returns).
+[Functions that can fail](/language/result#handle-go-functions-with-several-returns).
 
 ### Short forms
 
@@ -151,45 +132,18 @@ When the type is known, bare `ensure` and `ensure !` expand to these checks.
 
 | Type | Write | Same as |
 | --- | --- | --- |
-| `Bool` | `ensure b` | `ensure b is True()` |
-| `Bool` | `ensure !b` | `ensure b is False()` |
-| `Result(S, F)` | `ensure x` / `ensure f()` | `ensure … is Ok()` |
-| `*T`, `Map`, `Array` | `ensure x` | `ensure x is Present()` (non-nil) |
+| `Bool` | `ensure paid` | `ensure paid is True()` |
+| `Bool` | `ensure !paid` | `ensure paid is False()` |
+| `Result(S, F)` | `ensure order` / `ensure placeOrder(…)` | `ensure … is Ok()` |
+| `*T`, `Map`, `Array` | `ensure slot` | `ensure slot is Present()` (non-nil) |
 | `Error` / nilable | `ensure !err` | `ensure err is Nil()` |
 
 Other values still need an explicit `is` condition, as `name` did in `greet`.
 
-## Handle both outcomes in the same function
+## Accept several valid cases
 
-Use `if` when failure should not return from the function. You already saw
-this with `if order.paid`. The same idea applies to a `Result`. Forst refines
-the value inside the matching branch. Outside the branch, `order` is still the
-full `Result`:
-
-<EnsureIfOk />
-
-## Accept alternatives with `or`
-
-Use `or` to join several acceptable checks on the same value. This sign-in
-continues if `password` is either strong or a passkey. The `Strong` and
-`Passkey` guards live on [Type guards](/language/type-guards).
-
-```ft
-error InvalidCredential {}
-
-type Password = String
-
-func signIn(password Password) {
-	ensure password
-	    is Strong()
-	    or Passkey()
-	    else InvalidCredential{}
-}
-```
-
-If both checks fail, `signIn` returns `InvalidCredential`.
-
-The same shape works for a status that may be in several active cases:
+Use **`or`** to join several acceptable checks on the same value. This status
+continues if it is either pending or processing:
 
 ```ft
 error InvalidStatus {}
@@ -198,37 +152,20 @@ func advance(status String) {
 	ensure status
 	    is Pending()
 	    or Processing()
-	    or Retrying()
 	    else InvalidStatus{}
 }
 ```
+
+If both checks fail, `advance` returns `InvalidStatus`.
 
 Write the value once. Follow it with `is Pending()`, then `or Processing()`.
 Chained constraints stay together before `or`. In
 `ensure password is String.Min(3).Max(32) or UUIDV4()`, the first option checks
 a length range. The second runs `UUIDV4()`.
 
-Inside a [type guard](/language/type-guards), `ensure` cannot return a custom
+Inside a [**type guard**](/language/name-a-rule), `ensure` cannot return a custom
 error with `else`. Use `or` so any of several conditions can satisfy the guard.
-Callers then attach the error at the call:
-
-```ft
-error InactiveTask {}
-
-type Task = {
-	status: String,
-}
-
-is (task Task) Actionable() {
-	ensure task.status
-	    is Pending()
-	    or Processing()
-}
-
-func run(task Task) {
-	ensure task is Actionable() else InactiveTask{}
-}
-```
+Callers then attach the error at the call.
 
 ## Check against a named type
 
@@ -249,25 +186,15 @@ func start(status String) {
 ```
 
 A named constrained type lets a callee require the bound, and lets the caller
-prove it once:
+prove it once. See
+[Describe a shape](/language/shapes-and-constraints) for
+`type HttpPort = Int.Min(1).Max(65535)` and similar aliases.
 
-```ft
-error InvalidPort {}
-
-type HttpPort = Int.Min(1).Max(65535)
-
-func listen(port HttpPort) {}
-
-func serve(port Int) {
-	ensure port is HttpPort else InvalidPort{}
-	listen(port)
-}
-```
-
-`ensure port is HttpPort` runs the same checks as
-`ensure port is Min(1).Max(65535)`, then treats `port` as `HttpPort` so
-`listen` can take it. Omit parentheses for named types. Use parentheses for
+Omit parentheses for named types. Use parentheses for
 guards and assertion functions (`Strong()`, `Pending()`).
+
+For closed lists of allowed values, see
+[List alternatives](/language/union-and-intersection-types).
 
 ## Exit from main
 
@@ -288,7 +215,7 @@ If `drive` fails, the program writes to stderr and exits. `stop` never runs.
 If `stop` fails, the program prints `failed to stop`, then exits. Nothing after
 that `ensure` in `main` runs.
 
-## How refinements survive mutation
+## When a later write drops the fact
 
 A successful `ensure` establishes a fact about a variable or field. Forst
 remembers that fact on later lines, so you do not re-validate before a call
@@ -395,10 +322,16 @@ See the ensure and narrowing examples on GitHub:
 Continue with named errors or reusable conditions.
 
 <CardGroup cols={2}>
-  <Card title="Errors and Result" icon="triangle-exclamation" href="/language/errors-and-result">
-    Nominal error types and structured failures.
+  <Card title="Return a named error" icon="triangle-exclamation" href="/language/named-errors">
+    Give each expected failure a name and fields.
   </Card>
-  <Card title="Type guards" icon="code-branch" href="/language/type-guards">
+  <Card title="Name a reusable rule" icon="code-branch" href="/language/name-a-rule">
     User-defined predicates for domain rules.
+  </Card>
+  <Card title="Functions that can fail" icon="circle-nodes" href="/language/result">
+    Result returns and Ok / Err checks.
+  </Card>
+  <Card title="Describe a shape" icon="table-columns" href="/language/shapes-and-constraints">
+    Built-in constraints on primitive fields.
   </Card>
 </CardGroup>

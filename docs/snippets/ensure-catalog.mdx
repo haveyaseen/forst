@@ -2,7 +2,7 @@
   <Tab title="Forst">
     ```ft
     avail := catalog[in.stockKeepingUnit]
-    ensure avail is Ok()
+    ensure avail
     ensure in.quantity is Max(avail) else InsufficientStock{
     	stockKeepingUnit: in.stockKeepingUnit,
     	requested:        in.quantity,
@@ -13,9 +13,19 @@
   <Tab title="Generated Go">
     ```go
     // forst build
-    avail, ok := catalog[in.stockKeepingUnit]
-    if !ok {
-    	return /* missing key error */
+    import "errors"
+
+    var errMissingMapKey = errors.New("missing map key")
+
+    avail, availErr := func() (int, error) {
+    	v, ok := catalog[in.stockKeepingUnit]
+    	if !ok {
+    		return 0, errMissingMapKey
+    	}
+    	return v, nil
+    }()
+    if availErr != nil {
+    	return availErr
     }
     if in.quantity > avail {
     	return InsufficientStock{

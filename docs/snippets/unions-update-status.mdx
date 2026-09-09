@@ -1,0 +1,52 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    type TaskStatus =
+        | "todo"
+        | "in_progress"
+        | "success"
+        | "failed"
+
+    error BadStatus {}
+
+    func updateStatus(raw String) {
+    	ensure raw is TaskStatus else BadStatus{}
+    	// raw is narrowed to TaskStatus here
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    const (
+    	TaskStatus_todo        TaskStatus = "todo"
+    	TaskStatus_in_progress TaskStatus = "in_progress"
+    	TaskStatus_success     TaskStatus = "success"
+    	TaskStatus_failed      TaskStatus = "failed"
+    )
+
+    type BadStatus struct{}
+
+    type TaskStatus string
+
+    func (e BadStatus) Error() string { return "error" }
+
+    func (e BadStatus) ForstErrorTag() string { return "main/BadStatus" }
+
+    func isTaskStatus(v string) bool {
+    	switch TaskStatus(v) {
+    	case TaskStatus_todo, TaskStatus_in_progress, TaskStatus_success, TaskStatus_failed:
+    		return true
+    	}
+    	return false
+    }
+
+    func updateStatus(raw string) error {
+    	if !isTaskStatus(raw) {
+    		return BadStatus{}
+    	}
+    	return nil
+    }
+    ```
+  </Tab>
+</Tabs>

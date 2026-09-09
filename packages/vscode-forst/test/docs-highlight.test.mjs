@@ -208,10 +208,36 @@ test("hello.ft.mdx Forst tab content gets keyword and string spans", () => {
   assert.ok(classes.includes("ft-tok-string"), `expected string class, got ${classes.join(", ")}`);
 });
 
+const verifyPasswordSource = [
+  "package auth",
+  "",
+  'import "golang.org/x/crypto/bcrypt"',
+  "",
+  "func VerifyPassword(input {",
+  "  plainPassword: String,",
+  "  passwordHash: String",
+  "}) {",
+  "  compareErr := bcrypt.CompareHashAndPassword(hashBytes, plainBytes)",
+  "  if compareErr is Nil() {",
+  "    return { valid: true }",
+  "  }",
+  "  return { valid: false }",
+  "}",
+].join("\n");
+
 test("looksLikeForstSource detects Forst return types and ensure", () => {
   assert.equal(looksLikeForstSource('func greet(): String {\n  return "hi"\n}'), true);
   assert.equal(looksLikeForstSource("ensure x is Ok()"), true);
+  assert.equal(looksLikeForstSource(verifyPasswordSource), true);
   assert.equal(looksLikeForstSource('package main\nimport "fmt"\nfunc main() {}'), false);
+});
+
+test("isForstBlock detects mislabeled go blocks with Forst syntax", () => {
+  const code = el("code", { language: "go", class: "language-go" });
+  code.textContent = verifyPasswordSource;
+  const root = el("pre", { language: "go", class: "language-go" }, [code]);
+  const doc = makeDoc(root);
+  assert.equal(isForstBlock(code, doc), true);
 });
 
 test("isForstLabel accepts Forst tab titles and .ft filenames", () => {

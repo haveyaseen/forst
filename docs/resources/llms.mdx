@@ -62,7 +62,7 @@ Each directory holds one Forst package name. Same-package `.ft` files in **one d
 | **Packages** | Go style: `package handlers`, `import "fmt"`, module paths from `go.mod`. |
 | **Types** | `type Name = { field: String, count: Int }`. Use `String`, `Int`, `Float`, `Bool`, `Array(T)`, `*T`, not `string`/`int` in Forst type positions. |
 | **Literal unions** | `type TaskStatus = "todo" \| "in_progress" \| "success" \| "failed"`. |
-| **Domain type guards** | `type Password = String` then `is (p Password) Strong() { ... }`. Guards attach to nominal domain types. |
+| **Domain type guards** | `type Password = String` then `is (password Password) Strong() { ... }`. Guards attach to declared domain types. |
 | **Parameters** | Always annotated: `func f(x OrderInput): Result(String, Error)`. |
 | **Records at call sites** | `placeOrder({ stockKeepingUnit: "A", quantity: 2 })`. |
 | **Constraints on fields** | `String.Min(1).Max(64)`, `Int.Min(1).Max(99)`, `Array(String).NotEmpty()`. Compiler emits boundary checks. |
@@ -70,23 +70,100 @@ Each directory holds one Forst package name. Same-package `.ft` files in **one d
 | **Assertion alternative (`or`)** | `ensure password is Strong() or Passkey() else InvalidCredential{}`. Joins conditions on one value. |
 | **Type targets (`is`)** | `ensure status is TaskStatus else BadStatus{}`. Bare name checks named type membership. |
 | **Refinement stability** | Successful `ensure` refines type facts on following lines until dependent storage is written. |
-| **Optional / errors** | `ensure !err` (or `ensure err is Nil()`) implicitly propagates an `Error`. No `try`/`catch`, no `panic`/`recover`. |
-| **Map lookup** | Returns `Result(V, Error)`. **No comma-ok.** `ensure avail is Ok()` then use `avail`. |
-| **Nominal errors** | `error InsufficientStock { stockKeepingUnit: String, ... }`. Use with `ensure … else InsufficientStock{...}`. |
-| **Result returns** | `func f(): Result(String, Error) { return Ok("done") }`. Narrow with `ensure x is Ok()`. |
+| **Map lookup** | Returns `Result(V, Error)`. **No comma-ok.** `ensure avail` then use `avail`. |
+| **Named errors** | `error InsufficientStock { stockKeepingUnit: String, ... }`. Use with `ensure … else InsufficientStock{...}`. |
+| **Result returns** | Fallible body infers `Result(S, Error)`. Narrow with `ensure order` or `ensure order is Ok()`. `Ok()` / `Err()` are checks, not general constructors. |
 | **Providers** | `use logger: Logger` inside body. Wire at entry with `with { Logger: prodLogger {} } { handler(input) }`. Params = request data. Providers = host services. |
+
+## `ensure` shorthands
+
+When the type is known, bare `ensure` / `ensure !` expand. Prefer these short forms. `else` is optional in every row.
+
+| Type | Write | Same as | On failure |
+| --- | --- | --- | --- |
+| `Bool` | `ensure paid` | `ensure paid is True()` | Generic ensure error (or `else Named{}`) |
+| `Bool` | `ensure !paid` | `ensure paid is False()` | Same |
+| `Result(S, F)` | `ensure order` / `ensure placeOrder(…)` | `ensure … is Ok()` | Returns the `Result`'s error (except `main` / Go tests) |
+| `*T`, `Map`, `Array` | `ensure slot` | `ensure slot is Present()` | Non-nil check only (empty map/slice still pass) |
+| `*T`, `Map`, `Array` | `ensure !slot` | `ensure slot is Nil()` | Must be nil |
+| `Error` | `ensure !err` | `ensure err is Nil()` | Returns that `err` |
+
+Other values need an explicit `is` condition: `ensure name is Min(1) else EmptyName{}`.
+
+Length / emptiness: use `is NotEmpty()` or `is Min(n)`, not `Present` / `Nil`.
+
+### `ensure` vs `if`
+
+| Intent | Form |
+| --- | --- |
+| Next lines only make sense if the check passed; fail the function otherwise | `ensure …` |
+| Handle both outcomes in the same function | `if order is Ok() { … }` / `if order.paid { … }` |
+| Fail the process from `main` | `ensure …` (exit 1); optional `else { … }` cleanup block, no named `else Error{}` |
+| Named failure with fields | `ensure … else InsufficientStock{ … }` |
+| Several acceptable checks on one value | `ensure status is Pending() or Processing() else InvalidStatus{}` |
+
+### Named type vs guard / assertion
+
+| Form | Meaning | Example |
+| --- | --- | --- |
+| Bare name after `is` | Membership in a named type (literal union or constrained alias) | `ensure status is TaskStatus` |
+| Name with `()` | Guard or assertion function | `ensure ctx is LoggedIn()`, `ensure n is Min(1)` |
+| Dotted chain | All chained rules must pass | `ensure port is Min(1).Max(65535)` |
+| `or` between options | One option must pass | `ensure password is Strong() or Passkey()` |
+
+## Errors and `Result`
+
+| Pattern | Example |
+| --- | --- |
+| Empty named error | `error EmptyName {}` |
+| Error with fields | `error InsufficientStock { stockKeepingUnit: String, requested: Int, available: Int }` |
+| Return from check | `ensure in.quantity is Max(avail) else InsufficientStock{ … }` |
+| Closed error set | `type LoadFailed = ParseFailed \| IoFailed` then `Result(Int, LoadFailed)` |
+| Branch on one error | `if result is Err(ParseFailed) { … }` |
+| Inferred fallible return | Body has `ensure` / failure path → `Result(S, Error)` |
+| No success value | Body only `ensure` → `Result(Void, Error)`; generated Go is `func() error` |
+| Local handling | `if order is Ok() { … }` — does not change caller return type |
+| Propagate failure | `ensure order` — caller becomes fallible (not in `main` / Go tests) |
+
+### `Result` vs `Tuple`
+
+| Type | Comes from | How to use |
+| --- | --- | --- |
+| `Result(S, F)` | Forst success/failure paths (`return` + `ensure`) | `ensure order` / `is Ok()` / `is Err(Name)` |
+| `Tuple(T₁…Tₙ)` | Go call with several returns captured in one value | Split: `n, err := pkg.F()` then `ensure !err` |
+
+Never wrap multi-return Go calls as `Result` automatically. `Ok()` means no error; `Err()` means no success value.
 
 ## Constraints reference (common)
 
 | Type | Examples |
 | --- | --- |
-| `String` | `.Min(n)`, `.Max(n)`, `.NotEmpty()`, `.HasPrefix("x")`, `.Contains("x")` |
-| `Int` / `Float` | `.Min(n)`, `.Max(n)`, `.LessThan(n)`, `.GreaterThan(n)` |
-| `Array(T)` | `.Min(n)`, `.Max(n)`, `.NotEmpty()` |
+| `String` | `.Min(n)`, `.Max(n)`, `.MinBytes(n)`, `.MaxBytes(n)`, `.NotEmpty()`, `.HasPrefix("x")`, `.HasSuffix("x")`, `.Contains("x")` |
+| `Int` / `Float` | `.Min(n)`, `.Max(n)`, `.LessThan(n)`, `.GreaterThan(n)`; `Float` also `.Finite()` |
+| `Array(T)` / `Map(K,V)` / `Bytes` | `.Min(n)`, `.Max(n)`, `.NotEmpty()`; maps/arrays also `.Nil()`, `.Present()` (nilness) |
+| `Bool` | `.True()`, `.False()` |
 | `*T` | `.Nil()`, `.Present()` |
-| `Result` | `.Ok()`, `.Err()` in `ensure` |
+| `Result` | `.Ok()`, `.Err()` / `Err(ErrorName)` in `ensure` / `if` |
 
 Chain with dots. Same names work on type fields and in `ensure`.
+
+### Shape vs guard vs constrained alias
+
+| Need | Use |
+| --- | --- |
+| Length, bounds, prefix, fixed checks | Constraint on the type: `String.Min(1).Max(64)` |
+| Same bound as a reusable type name | Alias: `type HttpPort = Int.Min(1).Max(65535)` then `ensure port is HttpPort` |
+| Domain rule with several steps / field presence | Guard: `is (ctx AppContext) LoggedIn() { … }` |
+| Closed list of literals | Literal union: `type TaskStatus = "todo" \| "done"` |
+
+## Type guards (rules)
+
+| Rule | Detail |
+| --- | --- |
+| Attach to a declared type | `type Password = String` then `is (password Password) Strong() { … }` — not bare `String` |
+| Body is checks only | `if` / `ensure` / `is` / `or` allowed; no mutation, no `return`, no `else Named{}` inside the guard |
+| Named error on the caller | `ensure ctx is LoggedIn() else Unauthorized{}` |
+| After success | Later lines treat proven fields as present until a dependent write |
 
 ## CLI quick reference
 
@@ -105,7 +182,7 @@ Flags: `-root` merges same-package `.ft` files; `-export-struct-fields` emits ex
 ## When writing code
 
 1. Put validation on **types** at the HTTP boundary. Avoid manual `if len(s) < 1` when a constraint fits.
-2. Keep **business failures** as nominal `error` types or `Result`, not string errors.
+2. Keep **business failures** as named `error` types or `Result`, not string errors.
 3. Thread **request payloads** through parameters. Use **`use` / `with`** for loggers, clocks, repos (not `context.Context` values).
 4. Import real **Go packages** when needed (`fmt`, your module). Generated Go must compile with `go build`.
 5. After edits, run `npx forst run` or `npx forst test` on the touched package.
@@ -115,9 +192,11 @@ Flags: `-root` merges same-package `.ft` files; `-export-struct-fields` emits ex
 | Avoid | Use instead |
 | --- | --- |
 | Zod / class-validator patterns | Constraints on Forst shapes |
-| `try` / `catch`, thrown exceptions | `ensure`, `Result`, nominal `error` |
+| `try` / `catch`, thrown exceptions | `ensure`, `Result`, named `error` |
 | Application guards on bare primitives (`String`) | Guards on declared domain types (`type Password = String`) |
-| `v, ok := m[k]` | `Result` + `ensure v is Ok()` |
+| `v, ok := m[k]` | `Result` + `ensure avail` (or `ensure avail is Ok()`) |
+| `Ok(value)` / `Err(error)` as constructors | `return value` / `ensure … else Named{}` (checks only for `Ok()` / `Err()`) |
+| Auto-`Result` from Go multi-return | Split tuple: `n, err := pkg.F()` then `ensure !err` |
 | User-defined generics `<T>` | Built-ins only: `Array(T)`, `*T`, `Result(S,F)` (generics roadmap item) |
 | DI frameworks, globals, service locators | `use` / `with` at entry points |
 | Providers in sidecar / TS emit | Wire providers in Go host; export data types only |
@@ -127,11 +206,12 @@ Flags: `-root` merges same-package `.ft` files; `-export-struct-fields` emits ex
 | Task | Page |
 | --- | --- |
 | First project | [Quickstart](/quickstart) |
-| Shapes and constraints | [Shapes and constraints](/language/shapes-and-constraints) |
-| `ensure` and narrowing | [Ensure and narrowing](/language/ensure-and-narrowing) |
-| Literal unions and error unions | [Combining types](/language/union-and-intersection-types) |
-| Type guards | [Type guards](/language/type-guards) |
-| Errors and Result | [Errors and Result](/language/errors-and-result) |
+| Describe a shape | [Describe a shape](/language/shapes-and-constraints) |
+| `ensure` and narrowing | [Check a value](/language/check-a-value) |
+| Literal unions and error unions | [List alternatives](/language/union-and-intersection-types) |
+| Type guards | [Name a reusable rule](/language/name-a-rule) |
+| Named errors | [Return a named error](/language/named-errors) |
+| Result | [Functions that can fail](/language/result) |
 | Providers | [Providers (DI)](/language/providers) |
 | Go interop | [Go interop](/interop/go) — subslices, variadic spread into Go calls, fields/methods on Go values, sibling Forst packages |
 | TypeScript emit | [Generate client types](/interop/invoke/generate-types) |

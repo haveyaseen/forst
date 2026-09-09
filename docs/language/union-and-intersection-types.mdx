@@ -1,164 +1,106 @@
 ---
-title: "Combining types"
+title: "List alternatives"
 description: "Describe values with literal alternatives, error sets, or shared requirements."
+sidebarTitle: "List alternatives"
 ---
 
+import UnionsTaskStatus from "/snippets/unions-task-status.mdx";
+import UnionsUpdateStatus from "/snippets/unions-update-status.mdx";
+import UnionsPendingStatus from "/snippets/unions-pending-status.mdx";
+import UnionsHandleStatus from "/snippets/unions-handle-status.mdx";
+import UnionsLoadError from "/snippets/unions-load-error.mdx";
+import UnionsInspectParseError from "/snippets/unions-inspect-parse-error.mdx";
+import UnionsIdentifier from "/snippets/unions-identifier.mdx";
+import UnionsIntersection from "/snippets/unions-intersection.mdx";
+
 Sometimes one value can have several valid forms. In other cases, a value must
-meet several requirements at once. Forst uses unions for alternatives and
-intersections for combined requirements.
+meet several requirements at once. Forst uses **unions** for alternatives and
+**intersections** for combined requirements.
 
-In language design, these ideas follow set theory. A
-[union type](https://en.wikipedia.org/wiki/Union_type) contains values from
-either member set. An
-[intersection type](https://en.wikipedia.org/wiki/Intersection_type) contains
-only values that belong to every member set.
-
-The supported union forms are **named error unions** and **named homogeneous literal unions**
-(string, integer, or boolean literals). Other general unions and intersections remain
-experimental.
+The supported union forms are **named error unions** and **named homogeneous
+literal unions** (string, integer, or boolean literals). Other general unions
+and intersections remain experimental.
 
 ## List the possible string or numeric values of a field
 
-Use a literal union when a field can contain only a specific set of primitive values.
-The `|` operator separates each literal value.
+Use a **literal union** when a field can contain only a specific set of primitive
+values. The `|` operator separates each literal value.
 
-```ft
-type TaskStatus =
-    | "todo"
-    | "in_progress"
-    | "success"
-    | "failed"
-```
+<UnionsTaskStatus />
 
 Use `ensure` with the bare type name to validate untrusted input at runtime:
 
-```ft
-def updateStatus(raw String) {
-    ensure raw is TaskStatus else BadStatus{}
-    // raw is narrowed to TaskStatus here
-}
-```
+<UnionsUpdateStatus />
 
 After `ensure raw is TaskStatus`, `raw` has the narrowed `TaskStatus` type.
-
-Generated Go lowers `TaskStatus` to a defined scalar type with typed constants
-and a membership check. Generated TypeScript emits an ordinary string literal union.
+See [Check a value](/language/check-a-value#check-against-a-named-type).
 
 ### Subset types
 
-A smaller literal union is assignable to a larger literal union that contains all of its values.
+A smaller literal union is assignable to a larger literal union that contains
+all of its values.
 
-```ft
-type PendingStatus =
-    | "todo"
-    | "in_progress"
-```
+<UnionsPendingStatus />
 
-`PendingStatus` is assignable to `TaskStatus` because every value in `PendingStatus` belongs
-to `TaskStatus`. The reverse assignment (`TaskStatus` to `PendingStatus`) is rejected
-unless you validate the value first with `ensure`.
+`PendingStatus` is assignable to `TaskStatus` because every value in
+`PendingStatus` belongs to `TaskStatus`. The reverse assignment (`TaskStatus`
+to `PendingStatus`) is rejected unless you validate the value first with
+`ensure`.
 
 ### Exhaustive switches
 
-When a `switch` statement handles a literal union, the compiler checks that every possible
-value is covered.
+When a `switch` statement handles a literal union, the compiler checks that
+every possible value is covered.
 
-```ft
-func handleStatus(s TaskStatus) {
-    switch s {
-    case "todo":
-        // ...
-    case "in_progress":
-        // ...
-    case "success":
-        // ...
-    case "failed":
-        // ...
-    }
-}
-```
+<UnionsHandleStatus />
 
-If a case is missing and there is no `default` clause, the compiler reports a non-exhaustive
-switch diagnostic. Unreachable `default` cases when all values are handled are also reported.
+If a case is missing and there is no `default` clause, the compiler reports a
+non-exhaustive switch diagnostic. Unreachable `default` cases when all values
+are handled are also reported.
 
 ## List the errors a function can return
 
-Use an error union when a function has a small set of expected failures.
+Use an **error union** when a function has a small set of expected failures.
 
-```ft
-error ParseError {
-    code: Int,
-}
+<UnionsLoadError />
 
-error IoError {
-    path: String,
-}
-
-type LoadError = ParseError | IoError
-
-func load(): Result(Int, LoadError) {
-    return 0
-}
-```
-
-`LoadError` accepts `ParseError` or `IoError`. Each error keeps its own fields.
-The `Result` tells callers that `load` returns an integer or one of these two
-failures.
-
-Other error types do not belong to `LoadError`. This gives the function a
-closed and predictable failure set. See
-[Errors and Result](/language/errors-and-result) for how to create and return
-the errors.
+`LoadFailed` accepts `ParseFailed` or `IoFailed`. Each error keeps its own fields.
+The **`Result`** tells callers that `load` returns an integer or one of these two
+failures. See [Return a named error](/language/named-errors) and
+[Functions that can fail](/language/result) for how to create and return the
+errors.
 
 ### Handle one error from the list
 
 Use `Err(ErrorName)` when each error needs a different response.
 
-```ft
-func handleParseError(err ParseError) {}
+<UnionsInspectParseError />
 
-func inspect() {
-    result := load()
-    if result is Err(ParseError) {
-        handleParseError(result)
-    }
-}
-```
-
-Inside the branch, `result` is a `ParseError`. Generated Go uses an interface
-that only the listed errors implement. Generated TypeScript uses the same alternatives.
+Inside the branch, `result` is a `ParseFailed`. Generated Go uses an interface
+that only the listed errors implement. Generated TypeScript uses the same
+alternatives.
 
 ## Accept several kinds of value
 
-A general union can describe a value with several possible object or primitive types.
+A **general union** can describe a value with several possible object or primitive
+types.
 
-```ft
-type Identifier = String | Int
-```
+<UnionsIdentifier />
 
 Forst can parse and check this named declaration. Generated Go currently uses
-`any` for a general union, so type detail is lost after generation. Avoid general
-unions in application contracts until general Go output and narrowing are complete.
+`any` for a general union, so type detail is lost after generation. Avoid
+general unions in application contracts until general Go output and narrowing
+are complete.
 
 ## Require several sets of fields
 
-An intersection uses `&`. It describes a value that must satisfy every member.
+An **intersection** uses `&`. It describes a value that must satisfy every member.
 
-```ft
-type Named = {
-    name: String,
-}
+<UnionsIntersection />
 
-type Entity = {
-    id: Int,
-}
-
-type NamedEntity = Named & Entity
-```
-
-`NamedEntity` requires both `name` and `id`. Intersection parsing and type checking
-exist, while complete narrowing and generated Go types remain in development. Treat
-intersections as experimental.
+`NamedEntity` requires both `name` and `id`. Intersection parsing and type
+checking exist, while complete narrowing and generated Go types remain in
+development. Treat intersections as experimental.
 
 ## Choose the type for the job
 
@@ -173,15 +115,20 @@ Start from the behavior your function needs.
 | Require all listed type rules | An intersection |
 
 `Result` and `Tuple` have different guarantees. See
-[why they stay separate](/language/errors-and-result#result-and-tuple-stay-separate)
+[why they stay separate](/language/result#result-and-tuple-stay-separate)
 before wrapping calls with several return values.
 
 ## Current limits
 
-- Literal unions must be homogeneous (all string, all integer, or all boolean literals). Mixed, float, inline, shape, tagged, and general disjunctive unions remain experimental or planned.
-- Union and intersection syntax works in named type declarations (`type T = ...`).
-- Inline forms such as a parameter typed directly as `"a" | "b"` are unavailable; declare a named type.
-- Named error unions and named homogeneous literal unions are the supported end-to-end union paths.
+- Literal unions must be homogeneous (all string, all integer, or all boolean
+  literals). Mixed, float, inline, shape, tagged, and general disjunctive
+  unions remain experimental or planned.
+- Union and intersection syntax works in named type declarations
+  (`type T = ...`).
+- Inline forms such as a parameter typed directly as `"a" | "b"` are
+  unavailable; declare a named type.
+- Named error unions and named homogeneous literal unions are the supported
+  end-to-end union paths.
 - Arbitrary type unions (`String | Int`) lose detail in generated Go.
 - Optional types such as `T | Nil` are still planned.
 
@@ -189,7 +136,7 @@ See the [roadmap](/resources/roadmap) for current implementation status.
 
 ## Examples
 
-See the tested error union and literal union examples on GitHub
+See the tested error union and literal union examples on GitHub:
 
 * [`examples/in/union_error_types.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/union_error_types.ft)
 * [`examples/in/union_error_narrowing.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/union_error_narrowing.ft)
@@ -199,10 +146,13 @@ See the tested error union and literal union examples on GitHub
 Continue with typed failures or runtime narrowing.
 
 <CardGroup cols={2}>
-  <Card title="Errors and Result" icon="triangle-exclamation" href="/language/errors-and-result">
+  <Card title="Return a named error" icon="triangle-exclamation" href="/language/named-errors">
     Return and handle named failures.
   </Card>
-  <Card title="Ensure and narrowing" icon="filter" href="/language/ensure-and-narrowing">
+  <Card title="Check a value" icon="filter" href="/language/check-a-value">
     Refine values after runtime checks.
+  </Card>
+  <Card title="Functions that can fail" icon="circle-nodes" href="/language/result">
+    Result returns and Ok / Err checks.
   </Card>
 </CardGroup>

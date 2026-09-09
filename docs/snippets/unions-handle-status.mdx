@@ -1,0 +1,46 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    type TaskStatus =
+        | "todo"
+        | "in_progress"
+        | "success"
+        | "failed"
+
+    func handleStatus(s TaskStatus) {
+    	switch s {
+    	case "todo":
+    		// ...
+    	case "in_progress":
+    		// ...
+    	case "success":
+    		// ...
+    	case "failed":
+    		// ...
+    	}
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build — switch cases become typed constants
+    const (
+    	TaskStatus_todo        TaskStatus = "todo"
+    	TaskStatus_in_progress TaskStatus = "in_progress"
+    	TaskStatus_success     TaskStatus = "success"
+    	TaskStatus_failed      TaskStatus = "failed"
+    )
+
+    type TaskStatus string
+
+    func handleStatus(s TaskStatus) {
+    	switch s {
+    	case TaskStatus_todo:
+    	case TaskStatus_in_progress:
+    	case TaskStatus_success:
+    	case TaskStatus_failed:
+    	}
+    }
+    ```
+  </Tab>
+</Tabs>

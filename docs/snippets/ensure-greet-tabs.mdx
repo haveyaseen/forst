@@ -1,0 +1,27 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    error EmptyName {}
+
+    func greet(name String) {
+    	ensure name is Min(1) else EmptyName{}
+    	return "hello, " + name
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    type EmptyName struct{}
+
+    func (e EmptyName) Error() string { return "EmptyName" }
+
+    func greet(name string) (string, error) {
+    	if !(utf8.RuneCountInString(name) >= 1) {
+    		return "", EmptyName{}
+    	}
+    	return "hello, " + name, nil
+    }
+    ```
+  </Tab>
+</Tabs>

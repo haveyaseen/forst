@@ -1,0 +1,39 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    type TaskStatus =
+        | "todo"
+        | "in_progress"
+        | "success"
+        | "failed"
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    const (
+    	TaskStatus_todo        TaskStatus = "todo"
+    	TaskStatus_in_progress TaskStatus = "in_progress"
+    	TaskStatus_success     TaskStatus = "success"
+    	TaskStatus_failed      TaskStatus = "failed"
+    )
+
+    // TaskStatus: named literal union (4 members)
+    type TaskStatus string
+
+    func isTaskStatus(v string) bool {
+    	switch TaskStatus(v) {
+    	case TaskStatus_todo, TaskStatus_in_progress, TaskStatus_success, TaskStatus_failed:
+    		return true
+    	}
+    	return false
+    }
+    ```
+  </Tab>
+  <Tab title="Generated TypeScript">
+    ```typescript
+    // forst generate → @forst/gen
+    export type TaskStatus = "todo" | "in_progress" | "success" | "failed";
+    ```
+  </Tab>
+</Tabs>

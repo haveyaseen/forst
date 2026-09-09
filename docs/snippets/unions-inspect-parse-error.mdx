@@ -1,0 +1,73 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    error ParseFailed {
+    	code: Int,
+    }
+
+    error IoFailed {
+    	path: String,
+    }
+
+    type LoadFailed = ParseFailed | IoFailed
+
+    func load(): Result(Int, LoadFailed) {
+    	return 0
+    }
+
+    func handleParseFailed(err ParseFailed) {}
+
+    func inspect() {
+    	result := load()
+    	if result is Err(ParseFailed) {
+    		handleParseFailed(result)
+    	}
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    type LoadFailed interface {
+    	isLoadFailed()
+    }
+
+    type IoFailed struct {
+    	path string
+    }
+
+    type ParseFailed struct {
+    	code int
+    }
+
+    func (e IoFailed) Error() string { return "error" }
+    func (e ParseFailed) Error() string { return "error" }
+
+    func (e IoFailed) ForstErrorTag() string { return "main/IoFailed" }
+    func (e ParseFailed) ForstErrorTag() string { return "main/ParseFailed" }
+
+    func (IoFailed) isLoadFailed() {}
+    func (ParseFailed) isLoadFailed() {}
+
+    func load() (int, error) {
+    	return 0, nil
+    }
+
+    func handleParseFailed(err ParseFailed) {}
+
+    func inspect() {
+    	result, resultErr := load()
+    	if func() bool {
+    		if resultErr == nil {
+    			return false
+    		}
+    		_, ok := resultErr.(ParseFailed)
+    		return ok
+    	}() {
+    		_ = result
+    		handleParseFailed(resultErr.(ParseFailed))
+    	}
+    }
+    ```
+  </Tab>
+</Tabs>

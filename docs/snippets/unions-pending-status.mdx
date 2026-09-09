@@ -1,0 +1,50 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    type TaskStatus =
+        | "todo"
+        | "in_progress"
+        | "success"
+        | "failed"
+
+    type PendingStatus =
+        | "todo"
+        | "in_progress"
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    const (
+    	PendingStatus_todo        PendingStatus = "todo"
+    	PendingStatus_in_progress PendingStatus = "in_progress"
+    )
+
+    const (
+    	TaskStatus_todo        TaskStatus = "todo"
+    	TaskStatus_in_progress TaskStatus = "in_progress"
+    	TaskStatus_success     TaskStatus = "success"
+    	TaskStatus_failed      TaskStatus = "failed"
+    )
+
+    type PendingStatus string
+    type TaskStatus string
+
+    func isPendingStatus(v string) bool {
+    	switch PendingStatus(v) {
+    	case PendingStatus_todo, PendingStatus_in_progress:
+    		return true
+    	}
+    	return false
+    }
+
+    func isTaskStatus(v string) bool {
+    	switch TaskStatus(v) {
+    	case TaskStatus_todo, TaskStatus_in_progress, TaskStatus_success, TaskStatus_failed:
+    		return true
+    	}
+    	return false
+    }
+    ```
+  </Tab>
+</Tabs>

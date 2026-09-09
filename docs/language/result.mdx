@@ -1,0 +1,217 @@
+---
+title: "Functions that can fail"
+description: "A function returns a value or a failure. Check success before you use the value."
+sidebarTitle: "Functions that can fail"
+---
+
+import EnsurePlaceOrderOk from "/snippets/ensure-place-order-ok.mdx";
+import EnsureIfOk from "/snippets/ensure-if-ok.mdx";
+import ErrorsReserve from "/snippets/errors-reserve.mdx";
+import ErrorsGF from "/snippets/errors-g-f.mdx";
+import UnionsLoadError from "/snippets/unions-load-error.mdx";
+import UnionsInspectParseError from "/snippets/unions-inspect-parse-error.mdx";
+
+A **`Result`** records that a function can either return a value or one of its
+expected errors. Check success before you use the value. On failure, handle
+the error locally or let it return to the caller.
+
+## A value or a failure
+
+A function that can fail returns `Result(Success, Failure)`. The first type is
+the successful value. The second type is the error. The failure type must belong
+to the `Error` family.
+
+After `placeOrder` returns a `Result`, continue only on success:
+
+<EnsurePlaceOrderOk />
+
+`ensure order` is the same as `ensure order is Ok()`. On failure, the function
+that contains this `ensure` returns `order`'s error (except in `main` and Go
+tests). After the check, `order` is the successful value.
+
+See [Return a named error](/language/named-errors) for how to declare the
+failure types, and [Check a value](/language/check-a-value) for short forms of
+`ensure`.
+
+## How a function gets that type
+
+Forst can infer this return type when `ensure` introduces a failure path.
+
+<ErrorsReserve />
+
+The check in `reserve` can fail, so Forst infers `Result(Int, Error)`. The
+caller uses `ensure reserved is Ok()` before using the successful value.
+
+A function with no success value that still has a failure path (body `ensure`
+with no success return) infers `Result(Void, Error)`. Generated Go writes that
+as `func() error`. Callers treat the binding like other Results
+(`ensure result` or `ensure result is Ok()`).
+
+**`Ok()`** and **`Err()`** identify the two sides of a `Result` during `is` and
+`ensure` checks. They are checks. General `Ok(value)` and `Err(error)`
+constructors are still in development.
+
+Bare `ensure order is Ok()` with no `else` gives the caller a `Result` return
+type (except `main` / Go tests) and returns the error from `order`. Use
+`if order is Ok()` when you want local handling without changing the caller's
+return type.
+
+### Let Forst infer the return type
+
+Forst looks at three places when a function has no declared return type.
+
+- Each explicit `return`
+- Each `ensure` that can fail
+- The final expression in the function body
+
+If the final statement is an expression, its value becomes the return value.
+Generated Go adds the explicit `return`.
+
+<ErrorsGF />
+
+Here `g` returns `Result(Int, Error)`. The final call to `g()` means that `f`
+returns the same type. Generated Go contains `return g()`.
+
+Use an explicit `return` whenever it makes the intent easier to see.
+
+## Stay in the function on failure
+
+Use `if` when failure should not return from the function. Forst refines the
+value inside the matching branch. Outside the branch, `order` is still the
+full `Result`:
+
+<EnsureIfOk />
+
+## Check which error you got
+
+Use `Err(ErrorName)` when each error needs a different response. First declare
+a closed list of errors:
+
+<UnionsLoadError />
+
+Then branch on one of them:
+
+<UnionsInspectParseError />
+
+Inside the branch, `result` is a `ParseFailed`. See
+[List alternatives](/language/union-and-intersection-types#list-the-errors-a-function-can-return)
+for error unions.
+
+## Handle Go functions with several returns
+
+Go functions often return a value and an error. Forst preserves all returned
+values when you capture the call in one variable. The resulting type is a
+**`Tuple`**.
+
+Split the values and check the error when your Forst function should return a
+`Result`.
+
+```ft
+n, err := pkg.F()
+ensure !err
+return n
+```
+
+This is the same shape as ordinary Go error handling. Generated Go uses the
+usual value and error returns. Because `err` has type `Error`, the missing
+`else` returns that error. Writing `ensure !err else err` remains valid
+but is redundant.
+
+### Result and Tuple stay separate
+
+The two types make different promises. A `Result` contains one outcome. It is
+either a success or a failure. A `Tuple` preserves every returned position, and
+several positions may contain meaningful values at the same time.
+
+| Type | Where it comes from | How to inspect it |
+| --- | --- | --- |
+| `Result(S, F)` | Forst functions with success and failure paths | Use `Ok()` and `Err()` checks |
+| `Tuple(T₁…Tₙ)` | A call with several returns captured in one value | Read or split its ordered values |
+
+<AccordionGroup>
+  <Accordion title="Why Forst never turns several returns into a Result automatically">
+    `Result` means that you get a value or an error. Some calls can return both.
+    For example, a read can return its final bytes together with an end of input
+    signal. The bytes still need to be processed.
+
+    Forst cannot learn this behavior from the return types. A pair containing a
+    value and an error looks the same in both cases. Keeping a list of special
+    calls would miss new packages and functions.
+
+    Forst therefore never turns several return values into a `Result`
+    automatically. This keeps `Ok()` and `Err()` trustworthy. `Ok()` always means
+    that there is no error. `Err()` always means that there is no success value.
+
+    - A call with several returns always becomes a `Tuple` when captured in one
+      value. Every returned value stays available.
+    - A `Result` comes from a function with exclusive success and failure paths.
+      `return` and `ensure` make those paths explicit.
+    - Conversion between `Tuple` and `Result` is unavailable. `Ok()` and `Err()`
+      only apply to `Result`.
+    - When you know a call has exclusive outcomes, split its values and use
+      `ensure !err` before returning the success value.
+    - The rule applies to every package. It needs no catalog or project setting.
+
+    If a call with several returns is the final expression of an inferred function,
+    the function also returns a `Tuple`. Split the values as shown above when you
+    want a `Result`.
+
+    For calls used only for side effects, prefer Forst `println` or `print`. A
+    [Provider contract method](/language/providers) can also declare an explicit
+    return type.
+  </Accordion>
+</AccordionGroup>
+
+## Use errors from TypeScript
+
+Generated TypeScript clients can expose error payloads as tagged shapes. This
+part of the client API is still evolving. Generate the client with
+`forst generate` and see [Generate client types](/interop/invoke/generate-types)
+for the current output.
+
+## Caveats
+
+`Result` is experimental. Check the
+[roadmap](/resources/roadmap) before relying on edge cases in production.
+
+### Failure side
+
+The failure type must belong to the `Error` family. Other failure types are not
+supported yet.
+
+### `Ok` and `Err` role
+
+`Ok` and `Err` support `is` and `ensure` checks. General value constructors are
+still in development.
+
+### Final Go calls
+
+A final Go call with several return values produces a `Tuple` during return
+inference. Split the values and check the error when you need a `Result`.
+
+For limits around `ensure order is Ok()`, see
+[Check a value](/language/check-a-value#caveats).
+
+## Examples
+
+See the Result examples on GitHub:
+
+* [`examples/in/result_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_ensure.ft)
+* [`examples/in/result_void_ensure.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_void_ensure.ft)
+* [`examples/in/result_unwrap_propagate.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_unwrap_propagate.ft)
+* [`examples/in/result_if.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/result_if.ft)
+* [`examples/in/union_error_types.ft`](https://github.com/forst-lang/forst/blob/main/examples/in/union_error_types.ft)
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Return a named error" icon="triangle-exclamation" href="/language/named-errors">
+    Declare and return named failures.
+  </Card>
+  <Card title="Check a value" icon="filter" href="/language/check-a-value">
+    How ensure connects checks to control flow.
+  </Card>
+  <Card title="List alternatives" icon="code-branch" href="/language/union-and-intersection-types">
+    Closed sets of named errors.
+  </Card>
+</CardGroup>

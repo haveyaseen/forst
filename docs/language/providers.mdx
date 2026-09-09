@@ -42,7 +42,7 @@ Contract methods without a return type (such as **`info(msg String)`**) must sta
 - Do not end a void method with a Go call that returns values, such as **`fmt.Println(...)`**. With no declared return type, that trailing call becomes an implicit return, so the method no longer matches the void contract.
 - Prefer Forst **`println`** / **`print`** when you only need a side effect, or declare an explicit return type when you intend to return the call result.
 
-See [Return inference and implicit returns](/language/errors-and-result#return-inference-and-implicit-returns).
+See [How a function gets that type](/language/result#how-a-function-gets-that-type).
 
 ### Shadowing
 
@@ -95,7 +95,7 @@ See [Call Forst over HTTP § Caveats](/interop/invoke/call-forst#caveats) and [G
 - A trailing Go multi-return call such as **`fmt.Println(...)`** becomes an implicit return and breaks a void contract method.
 - Prefer Forst **`println`** / **`print`** for side effects, or declare an explicit return type.
 
-See [Return inference and implicit returns](/language/errors-and-result#return-inference-and-implicit-returns).
+See [How a function gets that type](/language/result#how-a-function-gets-that-type).
 
 ### `context.Context` is separate
 

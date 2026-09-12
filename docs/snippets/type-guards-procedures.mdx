@@ -1,0 +1,117 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    type MutationArg = Shape
+
+    is (req MutationArg) Input(input Shape) {
+    	ensure req is { input }
+    }
+
+    is (req MutationArg) Context(ctx Shape) {
+    	ensure req is { ctx }
+    }
+
+    type AppMutation = MutationArg.Context(AppContext)
+
+    func createTask(req AppMutation.Input({
+    	input: { name: String },
+    })) {
+    	ensure req.ctx is LoggedIn()
+    	return req.input.name
+    }
+
+    func getTask(req AppMutation.Input({
+    	input: { taskId: String },
+    })) {
+    	ensure req.ctx is LoggedIn()
+    	return req.input.taskId
+    }
+
+    sessionId := "479569ae-cbf0-471e-b849-38a698e0cb69"
+    createTask({
+    	ctx: {
+    		sessionId: &sessionId,
+    		user: { name: "Alice" },
+    	},
+    	input: {
+    		name: "Fix the leak",
+    	},
+    })
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    import errors "errors"
+
+    type AppContext struct {
+    	sessionId *string
+    	user      *User
+    }
+
+    type AppMutation struct {
+    	ctx AppContext
+    }
+
+    type MutationArg struct {
+    }
+
+    type T_488eVThFocF struct {
+    	ctx   AppContext
+    	input User
+    }
+
+    type T_CQWzvwMi9mY struct {
+    	ctx   AppContext
+    	input T_GtnrMUZwSZc
+    }
+
+    type T_GtnrMUZwSZc struct {
+    	taskId string
+    }
+
+    type T_PBoS2ej5ec7 string
+
+    type User struct {
+    	name string
+    }
+
+    func G_HRerS5U4F3k(ctx AppContext) bool {
+    	if ctx.sessionId == nil {
+    		return false
+    	}
+    	if ctx.user == nil {
+    		return false
+    	}
+    	return true
+    }
+
+    func G_cKNsLmdwv5n(req MutationArg, input T_PBoS2ej5ec7) bool {
+    	return true
+    }
+
+    func G_gHGun6hNdbd(req MutationArg, ctx T_PBoS2ej5ec7) bool {
+    	return true
+    }
+
+    func createTask(req T_488eVThFocF) (string, error) {
+    	if !G_HRerS5U4F3k(req.ctx) {
+    		return "", errors.New("ensure req.ctx is AppContext.LoggedIn(): want AppContext.LoggedIn()")
+    	}
+    	return req.input.name, nil
+    }
+
+    func getTask(req T_CQWzvwMi9mY) (string, error) {
+    	if !G_HRerS5U4F3k(req.ctx) {
+    		return "", errors.New("ensure req.ctx is AppContext.LoggedIn(): want AppContext.LoggedIn()")
+    	}
+    	return req.input.taskId, nil
+    }
+
+    func main() {
+    	sessionId := "479569ae-cbf0-471e-b849-38a698e0cb69"
+    	createTask(T_488eVThFocF{ctx: AppContext{sessionId: &sessionId, user: &User{}}, input: User{name: "Fix the leak"}})
+    }
+    ```
+  </Tab>
+</Tabs>

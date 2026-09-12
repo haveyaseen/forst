@@ -1,11 +1,12 @@
 ---
-title: "Type guards"
-description: "Give a reusable name to a rule about your data."
-hidden: true
+title: "Name a reusable rule"
+description: "Give a domain rule a name, then reuse it at every check."
+sidebarTitle: "Name a reusable rule"
 ---
 
 import TypeGuardsLoggedIn from "/snippets/type-guards-logged-in.mdx";
 import TypeGuardsProcedures from "/snippets/type-guards-procedures.mdx";
+import EnsureFulfill from "/snippets/ensure-fulfill.mdx";
 
 A **type guard** names a rule about a value. When the guard passes, Forst remembers
 what the check proved. Later lines can use required fields without repeating
@@ -54,7 +55,53 @@ is (password Password) Strong() {
 
 `Strong` then belongs to `Password`, not to every `String` in the program.
 
-## Share context across procedures
+### When to use which form
+
+| Need | Use |
+| --- | --- |
+| Length, bounds, prefix, and similar fixed checks | A [built-in constraint](/language/shapes-and-constraints) on the type |
+| The same bound as a reusable type name | A named constrained alias (`type HttpPort = Int.Min(1).Max(65535)`) |
+| A domain rule with several steps or field presence | A **type guard** (`is (ctx AppContext) LoggedIn()`) |
+
+## Use a guard inside `if` and `ensure`
+
+Use `if` when both outcomes belong in the function. Use `ensure` with a guard
+inside a branch when that branch only makes sense if more checks pass.
+
+This handler ships a paid order. An unpaid order waits. A paid order must be
+unlocked and must have items:
+
+<EnsureFulfill />
+
+`Unlocked` is `order.locked is False()`. `HasItems` is `order.items is Min(1)`.
+If `order.paid` is false, `fulfill` returns `"awaiting payment"` and never
+runs those checks. If it is paid, a locked order returns `OrderLocked` and an
+empty cart returns `EmptyCart`. After both `ensure`s pass, `order.items[0]` is
+safe. After the `if`, Forst does not treat the order as `Unlocked` or
+`HasItems`.
+
+## Keep guard bodies as checks
+
+A guard body only checks the value in parentheses and any extra parameters.
+The same input must always produce the same result.
+
+You can use `if`, `else if`, `else`, `is`, and `ensure`. A guard cannot change
+values, use `return`, or read unrelated variables.
+
+If an `if` in a guard body does not match and has no `else`, the guard fails.
+A guard also cannot return a named error with `else Unauthorized{}`. Put the
+named error on the `ensure` that uses the guard:
+
+```ft
+error Unauthorized {}
+
+ensure ctx is LoggedIn() else Unauthorized{}
+```
+
+Use `or` inside a guard when several conditions can satisfy the rule. See
+[Accept several valid cases](/language/check-a-value#accept-several-valid-cases).
+
+## Add fields to a request shape
 
 API procedures often share one context (who is calling) and differ on input
 (what they sent). You write that as one request object with a `ctx` field and
@@ -65,12 +112,6 @@ procedure below already has `ctx: AppContext`. `createTask` adds a task name.
 `getTask` adds a task id. Callers pass `ctx` and `input` together.
 
 <TypeGuardsProcedures />
-
-The Generated Go tab is the full `forst build` output for this example.
-Request shapes that have no Forst name become hashed Go types. `Input` and
-`Context` compile to helpers that return `true`; the type checker already
-required those fields. A failed `LoggedIn` check returns
-`errors.New("ensure req.ctx is AppContext.LoggedIn(): want AppContext.LoggedIn()")`.
 
 `type AppMutation = MutationArg.Context(AppContext)` means every procedure
 already has `ctx`. `.Input({ input: { name: String } })` adds this procedure's
@@ -95,26 +136,10 @@ runtime.
 type passed into the guard. `AppMutation.Input({ input: { name: String } })` is
 that guard applied to `createTask`.
 
-## Keep guard bodies as checks
-
-A guard body only checks the value in parentheses and any extra parameters.
-The same input must always produce the same result.
-
-You can use `if`, `else if`, `else`, `is`, and `ensure`. A guard cannot change
-values, use `return`, or read unrelated variables.
-
-If an `if` in a guard body does not match and has no `else`, the guard fails.
-A guard also cannot return a named error with `else Unauthorized{}`. Put the
-named error on the `ensure` that uses the guard:
-
-```ft
-error Unauthorized {}
-
-ensure ctx is LoggedIn() else Unauthorized{}
-```
-
-Use `or` inside a guard when several conditions can satisfy the rule. See
-[Accept alternatives with `or`](/language/ensure-and-narrowing#accept-alternatives-with-or).
+Request shapes that have no Forst name become hashed Go types in the Generated
+Go tab. `Input` and `Context` compile to helpers that return `true`; the type
+checker already required those fields. A failed `LoggedIn` check returns
+`errors.New("ensure req.ctx is AppContext.LoggedIn(): want AppContext.LoggedIn()")`.
 
 ## Caveats
 
@@ -122,21 +147,11 @@ Type guards are experimental. The examples above parse, type-check, and
 compile to Go. See the [roadmap](/resources/roadmap).
 
 A guard checks the value once at an `ensure` or `if`. Later changes do not run
-the guard again. A write to a field the check used drops the fact. The write
-stays legal. Later uses that need the fact are errors.
-
-```ft
-ensure ctx is LoggedIn()
-ctx.sessionId = nil
-```
-
-A later `ensure ctx is LoggedIn()`, or any use of `ctx.sessionId` as present,
-is an error until you check again.
-
-See [How refinements survive mutation](/language/ensure-and-narrowing#how-refinements-survive-mutation)
+the guard again. A write to a field the check used drops the fact. See
+[When a later write drops the fact](/language/check-a-value#when-a-later-write-drops-the-fact)
 for field writes, pointer fields, and concurrency.
 
-Narrowing after a check on a simple name (`ensure ctx is LoggedIn()`) is the
+**Narrowing** after a check on a simple name (`ensure ctx is LoggedIn()`) is the
 reliable case. A check on a dotted path (`ensure req.ctx is LoggedIn()`) still
 has gaps. Editor hover may show the guard while later lines still see the
 original type.
@@ -144,13 +159,13 @@ original type.
 Narrowing inside an `if` branch may end with that branch. Code after the full
 chain can see the earlier type.
 
-A shape guard such as `Input` verifies that a field exists with the required
+A **shape guard** such as `Input` verifies that a field exists with the required
 shape. It never creates or fills that field.
 
 Generated Go uses functions or inline conditions for guard checks. An `ensure`
 that uses the guard follows the usual Go error return path.
 
-See [Ensure and narrowing](/language/ensure-and-narrowing#caveats) for general
+See [Check a value](/language/check-a-value#caveats) for general
 narrowing limits.
 
 ## Examples
@@ -166,10 +181,10 @@ See the type guard examples on GitHub:
 Continue with built-in constraints or apply guards with `ensure`.
 
 <CardGroup cols={2}>
-  <Card title="Shapes and constraints" icon="table-columns" href="/language/shapes-and-constraints">
+  <Card title="Describe a shape" icon="table-columns" href="/language/shapes-and-constraints">
     Built-in constraints on primitive fields.
   </Card>
-  <Card title="Ensure and narrowing" icon="filter" href="/language/ensure-and-narrowing">
-    Using `ensure … is …` at call sites.
+  <Card title="Check a value" icon="filter" href="/language/check-a-value">
+    Using ensure … is … at call sites.
   </Card>
 </CardGroup>

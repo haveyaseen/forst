@@ -314,8 +314,11 @@ function applyCaptureTokens(captures, match, offset, tokens, fallbackName) {
 function looksLikeForstSource(source) {
   if (!source.trim()) return false;
   if (/\bfunc\s+\w+\s*\([^)]*\)\s*:/.test(source)) return true;
+  if (/\bfunc\s+\w+\s*\(\s*\w+\s+\{/.test(source)) return true;
   if (/\bensure\b/.test(source)) return true;
+  if (/\b\w+\s+is\s+(Nil|Ok|True|False|Present)\s*\(/.test(source)) return true;
   if (/\btype\s+\w+\s*\{[\s\S]*?\w+\s*:/.test(source)) return true;
+  if (/\b\w+:\s*(String|Int|Float|Bool)(\s|,|\})/.test(source)) return true;
   if (/\b(String|Int|Float|Bool|Result|Error|Array|Map|Shape)\.(Min|Max|Ok|Err|True|False|Nil)\s*\(/.test(source)) return true;
   if (/\berror\s+[A-Z]\w*/.test(source)) return true;
   return false;
@@ -405,28 +408,31 @@ function isPlainTextFallback(code) {
 }
 
 /**
+ * Mintlify may tag Forst-looking blocks as Go when they use package/import/func.
  * @param {HTMLElement} code
- * @param {Document} doc
  * @returns {boolean}
  */
-function isForstBlock(code, doc) {
-  if (hasExplicitFtLanguage(code)) return true;
-  if (hasForstTabContext(code, doc)) return true;
-  if (isPlainTextFallback(code) && looksLikeForstSource(code.textContent ?? "")) return true;
+function isMislabeledForstLanguage(code) {
+  for (const node of walkSelfAndAncestors(code, 4)) {
+    const lang = node.getAttribute("language") || node.getAttribute("data-language") || "";
+    if (lang === "go") return true;
+    if (/\blanguage-go\b/.test(node.className || "")) return true;
+  }
   return false;
 }
 
-  const GRAMMAR = {"$schema":"https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json","name":"ft","scopeName":"source.forst","patterns":[{"include":"#comments"},{"include":"#strings"},{"include":"#numbers"},{"include":"#hover-dotted-field-type"},{"include":"#hover-field-type"},{"include":"#constraints"},{"include":"#func-signature"},{"include":"#func-name"},{"include":"#nominal-error-decl"},{"include":"#nominal-error-use"},{"include":"#function-call"},{"include":"#short-var-decl"},{"include":"#param-type-pair"},{"include":"#field-access"},{"include":"#keywords"},{"include":"#types-builtin"},{"include":"#types-user"},{"include":"#operators"}],"repository":{"comments":{"patterns":[{"name":"comment.line.double-slash.forst","match":"//.*"},{"name":"comment.block.forst","begin":"/\\*","end":"\\*/"}]},"strings":{"patterns":[{"name":"string.quoted.double.forst","begin":"\"","end":"\"","patterns":[{"name":"constant.character.escape.forst","match":"\\\\(?:[nrtvfb\\\\\"']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})"}]},{"name":"string.quoted.single.forst","begin":"'","end":"'","patterns":[{"name":"constant.character.escape.forst","match":"\\\\(?:[nrtvfb\\\\\"']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})"}]},{"name":"string.quoted.other.forst","begin":"`","end":"`"}]},"numbers":{"patterns":[{"name":"constant.numeric.hex.forst","match":"\\b0[xX][0-9a-fA-F]+\\b"},{"name":"constant.numeric.binary.forst","match":"\\b0[bB][01]+\\b"},{"name":"constant.numeric.octal.forst","match":"\\b0[oO][0-7]+\\b"},{"name":"constant.numeric.float.imaginary.forst","match":"\\b(?:\\d+\\.\\d+|\\d+\\.|\\.\\d+)(?:[eE][+-]?\\d+)?[i]\\b"},{"name":"constant.numeric.float.forst","match":"\\b\\d+(?:\\.\\d+)?[eE][+-]?\\d+\\b"},{"name":"constant.numeric.float.forst","match":"\\b(?:\\d+\\.\\d+|\\d+\\.|\\.\\d+)(?:[eE][+-]?\\d+)?\\b"},{"name":"constant.numeric.integer.forst","match":"\\b\\d+\\b"}]},"hover-dotted-field-type":{"comment":"LSP hover: result.id: String (dotted receiver before colon)","match":"\\b([A-Za-z_][\\w]*)\\.([A-Za-z_][\\w]*)\\s*:","captures":{"1":{"name":"variable.other.readwrite"},"2":{"name":"variable.other.property"}}},"hover-field-type":{"comment":"LSP hover: result.id: String or name: Type","match":"\\b([A-Za-z_][\\w]*)\\s*:\\s*(?=[A-Za-z_(])","captures":{"1":{"name":"variable.other.readwrite"}}},"constraints":{"comment":"Builtin guards and Result discriminators in type strings (String.Min(1).Ok())","match":"\\.(Min|Max|LessThan|GreaterThan|HasPrefix|Contains|True|False|Nil|Present|NotEmpty|Value|Match|Ok|Err)\\s*\\(","captures":{"1":{"name":"entity.name.function.constraint.forst"}}},"func-signature":{"comment":"LSP hover / source: func name(params) -> Return","begin":"\\b(func)\\s+([A-Za-z_][\\w]*)\\s*\\(","beginCaptures":{"1":{"name":"keyword.declaration"},"2":{"name":"entity.name.function"}},"end":"\\)","patterns":[{"include":"#param-type-pair"},{"include":"#types-builtin"},{"include":"#types-user"},{"include":"#constraints"}]},"func-name":{"match":"\\b(func)\\s+([A-Za-z_][\\w]*)","captures":{"1":{"name":"keyword.declaration"},"2":{"name":"entity.name.function"}}},"nominal-error-decl":{"comment":"RFC nominal errors: error Name { ... }","match":"\\b(error)\\s+([A-Za-z_][\\w]*)","captures":{"1":{"name":"keyword.declaration"},"2":{"name":"entity.name.type.error.forst"}}},"nominal-error-use":{"comment":"ensure … else ErrorName( — constructor at failure site","match":"\\b(else)\\s+([A-Za-z_][\\w]*)\\s*(?=\\()","captures":{"1":{"name":"keyword.control"},"2":{"name":"entity.name.type.error.forst"}}},"function-call":{"patterns":[{"comment":"Method call: recv.method(","match":"\\.([A-Za-z_][\\w]*)\\s*(?=\\()","captures":{"1":{"name":"entity.name.function"}}},{"comment":"Call: name( — exclude keywords","match":"(?<!\\.)\\b(?!(?:if|else|for|range|break|continue|switch|case|default|fallthrough|return|ensure|is|or|go|defer|goto|use|with|func|type|error|var|const|import|package|nil|true|false|map|chan|interface|struct)\\b)([A-Za-z_][\\w]*)\\s*(?=\\()","captures":{"1":{"name":"entity.name.function"}}}]},"short-var-decl":{"match":"\\b([A-Za-z_][\\w]*)\\s*:=","captures":{"1":{"name":"variable.other.readwrite"}}},"param-type-pair":{"comment":"Parameter name before type: amount Float","match":"\\b([A-Za-z_][\\w]*)\\s+(?=(?:String|Int|Float|Bool|Void|Array|Error|Result|Tuple|Map|Pointer|Object|Shape|[A-Z][A-Za-z0-9_]*)(?:\\.|\\s|,|\\)|->))","captures":{"1":{"name":"variable.parameter"}}},"field-access":{"comment":"Field access: recv.field (not a call)","match":"\\.([A-Za-z_][\\w]*)(?!\\s*\\()","captures":{"1":{"name":"variable.other.property"}}},"keywords":{"patterns":[{"name":"keyword.control","match":"\\b(else if|if|else|for|range|break|continue|switch|case|default|fallthrough|return|ensure|is|or|go|defer|goto|use|with)\\b"},{"name":"keyword.declaration","match":"\\b(func|type|error|var|const|import|package|async)\\b"},{"name":"keyword.other","match":"\\b(as|from)\\b"},{"name":"constant.language","match":"\\b(nil|true|false)\\b"}]},"types-builtin":{"patterns":[{"name":"support.type.primitive","match":"\\b(String|Int|Float|Bool|Void|Array|Error|Result|Tuple|Map|Pointer|Object|Shape)\\b"},{"name":"storage.type","match":"\\b(map|chan|interface|struct)\\b"}]},"types-user":{"comment":"User-defined PascalCase types","match":"(?<!\\.)\\b([A-Z][A-Za-z0-9_]*)\\b","captures":{"1":{"name":"entity.name.type"}}},"operators":{"match":"(==|!=|>=|<=|&&|\\|\\||:=|\\+\\+|--|->|[+\\-*/%&|^!~<>=?:;,.\\(\\)\\[\\]{}])","name":"keyword.operator"}},"fileTypes":["ft"]};
-
-  /**
+/**
  * @param {HTMLElement} code
  * @returns {boolean}
  */
 function hasForstCodeBlockLabel(code) {
+  const closest = code.closest?.bind(code);
+  if (!closest) return false;
+
   const root =
-    code.closest('[data-component-part="code-block-root"]') ||
-    code.closest('[data-component-part="code-group-root"]') ||
-    code.closest("pre")?.parentElement;
+    closest('[data-component-part="code-block-root"]') ||
+    closest('[data-component-part="code-group-root"]') ||
+    closest("pre")?.parentElement;
 
   if (!root) return false;
 
@@ -450,17 +456,23 @@ function hasForstCodeBlockLabel(code) {
 
 /**
  * @param {HTMLElement} code
+ * @param {Document} doc
  * @returns {boolean}
  */
-function isForstBlock(code) {
+function isForstBlock(code, doc) {
   if (hasExplicitFtLanguage(code)) return true;
-  if (hasForstTabContext(code, document)) return true;
+  if (hasForstTabContext(code, doc)) return true;
   if (hasForstCodeBlockLabel(code)) return true;
-  if (isPlainTextFallback(code) && looksLikeForstSource(code.textContent ?? "")) return true;
+  const source = code.textContent ?? "";
+  if (!looksLikeForstSource(source)) return false;
+  if (isPlainTextFallback(code)) return true;
+  if (isMislabeledForstLanguage(code)) return true;
   return false;
 }
 
-/**
+  const GRAMMAR = {"$schema":"https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json","name":"ft","scopeName":"source.forst","patterns":[{"include":"#comments"},{"include":"#strings"},{"include":"#numbers"},{"include":"#hover-dotted-field-type"},{"include":"#hover-field-type"},{"include":"#constraints"},{"include":"#func-signature"},{"include":"#func-name"},{"include":"#nominal-error-decl"},{"include":"#nominal-error-use"},{"include":"#function-call"},{"include":"#short-var-decl"},{"include":"#param-type-pair"},{"include":"#field-access"},{"include":"#keywords"},{"include":"#types-builtin"},{"include":"#types-user"},{"include":"#operators"}],"repository":{"comments":{"patterns":[{"name":"comment.line.double-slash.forst","match":"//.*"},{"name":"comment.block.forst","begin":"/\\*","end":"\\*/"}]},"strings":{"patterns":[{"name":"string.quoted.double.forst","begin":"\"","end":"\"","patterns":[{"name":"constant.character.escape.forst","match":"\\\\(?:[nrtvfb\\\\\"']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})"}]},{"name":"string.quoted.single.forst","begin":"'","end":"'","patterns":[{"name":"constant.character.escape.forst","match":"\\\\(?:[nrtvfb\\\\\"']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})"}]},{"name":"string.quoted.other.forst","begin":"`","end":"`"}]},"numbers":{"patterns":[{"name":"constant.numeric.hex.forst","match":"\\b0[xX][0-9a-fA-F]+\\b"},{"name":"constant.numeric.binary.forst","match":"\\b0[bB][01]+\\b"},{"name":"constant.numeric.octal.forst","match":"\\b0[oO][0-7]+\\b"},{"name":"constant.numeric.float.imaginary.forst","match":"\\b(?:\\d+\\.\\d+|\\d+\\.|\\.\\d+)(?:[eE][+-]?\\d+)?[i]\\b"},{"name":"constant.numeric.float.forst","match":"\\b\\d+(?:\\.\\d+)?[eE][+-]?\\d+\\b"},{"name":"constant.numeric.float.forst","match":"\\b(?:\\d+\\.\\d+|\\d+\\.|\\.\\d+)(?:[eE][+-]?\\d+)?\\b"},{"name":"constant.numeric.integer.forst","match":"\\b\\d+\\b"}]},"hover-dotted-field-type":{"comment":"LSP hover: result.id: String (dotted receiver before colon)","match":"\\b([A-Za-z_][\\w]*)\\.([A-Za-z_][\\w]*)\\s*:","captures":{"1":{"name":"variable.other.readwrite"},"2":{"name":"variable.other.property"}}},"hover-field-type":{"comment":"LSP hover: result.id: String or name: Type","match":"\\b([A-Za-z_][\\w]*)\\s*:\\s*(?=[A-Za-z_(])","captures":{"1":{"name":"variable.other.readwrite"}}},"constraints":{"comment":"Builtin guards and Result discriminators in type strings (String.Min(1).Ok())","match":"\\.(Min|Max|LessThan|GreaterThan|HasPrefix|Contains|True|False|Nil|Present|NotEmpty|Value|Match|Ok|Err)\\s*\\(","captures":{"1":{"name":"entity.name.function.constraint.forst"}}},"func-signature":{"comment":"LSP hover / source: func name(params) -> Return","begin":"\\b(func)\\s+([A-Za-z_][\\w]*)\\s*\\(","beginCaptures":{"1":{"name":"keyword.declaration"},"2":{"name":"entity.name.function"}},"end":"\\)","patterns":[{"include":"#param-type-pair"},{"include":"#types-builtin"},{"include":"#types-user"},{"include":"#constraints"}]},"func-name":{"match":"\\b(func)\\s+([A-Za-z_][\\w]*)","captures":{"1":{"name":"keyword.declaration"},"2":{"name":"entity.name.function"}}},"nominal-error-decl":{"comment":"RFC nominal errors: error Name { ... }","match":"\\b(error)\\s+([A-Za-z_][\\w]*)","captures":{"1":{"name":"keyword.declaration"},"2":{"name":"entity.name.type.error.forst"}}},"nominal-error-use":{"comment":"ensure … else ErrorName( — constructor at failure site","match":"\\b(else)\\s+([A-Za-z_][\\w]*)\\s*(?=\\()","captures":{"1":{"name":"keyword.control"},"2":{"name":"entity.name.type.error.forst"}}},"function-call":{"patterns":[{"comment":"Method call: recv.method(","match":"\\.([A-Za-z_][\\w]*)\\s*(?=\\()","captures":{"1":{"name":"entity.name.function"}}},{"comment":"Call: name( — exclude keywords","match":"(?<!\\.)\\b(?!(?:if|else|for|range|break|continue|switch|case|default|fallthrough|return|ensure|is|or|go|defer|goto|use|with|func|type|error|var|const|import|package|nil|true|false|map|chan|interface|struct)\\b)([A-Za-z_][\\w]*)\\s*(?=\\()","captures":{"1":{"name":"entity.name.function"}}}]},"short-var-decl":{"match":"\\b([A-Za-z_][\\w]*)\\s*:=","captures":{"1":{"name":"variable.other.readwrite"}}},"param-type-pair":{"comment":"Parameter name before type: amount Float","match":"\\b([A-Za-z_][\\w]*)\\s+(?=(?:String|Int|Float|Bool|Void|Array|Error|Result|Tuple|Map|Pointer|Object|Shape|[A-Z][A-Za-z0-9_]*)(?:\\.|\\s|,|\\)|->))","captures":{"1":{"name":"variable.parameter"}}},"field-access":{"comment":"Field access: recv.field (not a call)","match":"\\.([A-Za-z_][\\w]*)(?!\\s*\\()","captures":{"1":{"name":"variable.other.property"}}},"keywords":{"patterns":[{"name":"keyword.control","match":"\\b(else if|if|else|for|range|break|continue|switch|case|default|fallthrough|return|ensure|is|or|go|defer|goto|use|with)\\b"},{"name":"keyword.declaration","match":"\\b(func|type|error|var|const|import|package|async)\\b"},{"name":"keyword.other","match":"\\b(as|from)\\b"},{"name":"constant.language","match":"\\b(nil|true|false)\\b"}]},"types-builtin":{"patterns":[{"name":"support.type.primitive","match":"\\b(String|Int|Float|Bool|Void|Array|Error|Result|Tuple|Map|Pointer|Object|Shape)\\b"},{"name":"storage.type","match":"\\b(map|chan|interface|struct)\\b"}]},"types-user":{"comment":"User-defined PascalCase types","match":"(?<!\\.)\\b([A-Z][A-Za-z0-9_]*)\\b","captures":{"1":{"name":"entity.name.type"}}},"operators":{"match":"(==|!=|>=|<=|&&|\\|\\||:=|\\+\\+|--|->|[+\\-*/%&|^!~<>=?:;,.\\(\\)\\[\\]{}])","name":"keyword.operator"}},"fileTypes":["ft"]};
+
+  /**
  * @param {HTMLElement} code
  * @returns {boolean}
  */
@@ -485,7 +497,7 @@ function applyHighlightHtml(container, source) {
  * @param {HTMLElement} code
  */
 function highlightBlock(code) {
-  if (!isForstBlock(code) || alreadyHighlighted(code)) return;
+  if (!isForstBlock(code, document) || alreadyHighlighted(code)) return;
 
   const lineEls = code.querySelectorAll(":scope > .line");
   if (lineEls.length > 0) {

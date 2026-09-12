@@ -74,8 +74,8 @@ How each language models data, errors, and concurrency.
 | Structural typing | Built-in | Structs (nominal) | [Built-in](/language/overview) (flexible) |
 | Mocking & DI | DI libraries | Manual / Fx / Wire | [`use` / `with`](/language/providers) |
 | Validation on types | Schema library (Zod, etc.) | Manual checks | [Built-in constraints](/language/shapes-and-constraints) |
-| Error handling | Exceptions (`try`/`catch`) | `(T, error)` values | [`ensure`, `Result`, nominal errors`](/language/errors-and-result) |
-| Type narrowing | Discriminated unions, type guards, `asserts` | Type assertions | [`is` / `ensure`](/language/ensure-and-narrowing), [type guards](/language/type-guards) |
+| Error handling | Exceptions (`try`/`catch`) | `(T, error)` values | [`ensure`, `Result`, named errors`](/language/named-errors) |
+| Type narrowing | Discriminated unions, type guards, `asserts` | Type assertions | [`is` / `ensure`](/language/check-a-value), [type guards](/language/name-a-rule) |
 | Exceptions | Yes (`try`/`catch`) | Yes (`panic`/`recover`) | No ([Go panics possible](/language/overview)) |
 | User-defined generics | Yes | Yes | No ([built-ins](/language/overview), [planned](/resources/roadmap)) |
 | Class inheritance | Yes | No (composition) | No ([shapes](/language/overview)) |
@@ -107,7 +107,7 @@ How you ship, debug, and adopt each stack day to day.
     Typed records with field access, signatures, and **`is`** narrowing. You define one schema layer for the server.
   </Card>
   <Card title="Validation on the type" icon="shield-check" href="/language/shapes-and-constraints">
-    Constraints on fields. The compiler checks known values at compile time and emits runtime checks at the boundary.
+    **Constraints** on fields. The compiler checks known values at compile time and emits runtime checks at the boundary.
   </Card>
   <Card title="Generate client types" icon="/icons/typescript.svg" href="/interop/invoke/generate-types">
     **`forst generate`** emits **`.d.ts`** from the same **`.ft`** definitions the server uses. Optional [plugins](/workflow/plugins) emit schemas, RPC contracts, and routes.
@@ -115,8 +115,8 @@ How you ship, debug, and adopt each stack day to day.
   <Card title="Production Go output" icon="/icons/golang.svg" href="/interop/go">
     Readable Go output. Ship with **`go build`**, existing modules, tests, and CI.
   </Card>
-  <Card title="Explicit failures" icon="route" href="/language/errors-and-result">
-    **`ensure`**, nominal **`error`** types, and **`Result`**. Failures are values you handle in control flow.
+  <Card title="Explicit failures" icon="route" href="/language/named-errors">
+    **`ensure`**, named **`error`** types, and **`Result`**. Failures are values you handle in control flow.
   </Card>
   <Card title="Gradual adoption" icon="plug" href="/interop/invoke/call-forst">
     Mix **`.ft`** with **`.go`**. Migrate route by route with **`forst dev`** or **`@forst/sidecar`**.

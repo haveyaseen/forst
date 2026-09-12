@@ -1,10 +1,12 @@
 <Tabs>
   <Tab title="Forst">
     ```ft
+    error SlotAlreadyTaken {}
+
     var slot: *Int = nil
 
     func claim(value Int) {
-    	ensure slot is Nil()
+    	ensure !slot else SlotAlreadyTaken{}
     	slot = &value
     }
 
@@ -17,11 +19,19 @@
   <Tab title="Generated Go">
     ```go
     // forst build
+    type SlotAlreadyTaken struct{}
+
+    func (e SlotAlreadyTaken) Error() string { return "SlotAlreadyTaken" }
+
+    func (e SlotAlreadyTaken) ForstErrorTag() string {
+    	return "main/SlotAlreadyTaken"
+    }
+
     var slot *int = nil
 
     func claim(value int) error {
     	if slot != nil {
-    		return /* expected nil */
+    		return SlotAlreadyTaken{}
     	}
     	slot = &value
     	return nil

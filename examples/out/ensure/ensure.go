@@ -17,11 +17,11 @@ type TooShort struct {
 }
 
 func (e TooFast) Error() string {
-	return "error"
+	return "TooFast"
 }
 
 func (e TooShort) Error() string {
-	return "error"
+	return "TooShort"
 }
 
 func (e TooFast) ForstErrorTag() string {

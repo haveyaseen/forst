@@ -31,7 +31,7 @@ go test ./...
 
 Much of Forst mirrors Go syntax: `package`, `import`, `func`, `if`/`for`/`range`, `defer`, `go` goroutines. A minimal program can be identical in Forst and Go. See [Language overview](/language/overview).
 
-Forst adds structural typing, constraints, `ensure`, and nominal errors on top of that base.
+Forst adds structural typing, **constraints**, **`ensure`**, and named **errors** on top of that base.
 
 ## Import Go packages
 
@@ -43,14 +43,14 @@ When an import has no alias, the compiler uses the Go package name from `go/pack
 
 The compiler loads Go packages via **`go/packages`** and type-checks Forst↔Go calls when imports resolve. Supported mappings include primitives, slices, pointers, `error`, `interface{}` (including variadic calls), and Forst **`func`** literals at Go **`func`** parameters.
 
-Calls with several return values become a `Tuple` when captured in one
+Calls with several return values become a **`Tuple`** when captured in one
 variable. Split the values and use `ensure !err` when your function
-should expose an exclusive `Result`.
+should expose an exclusive **`Result`**.
 
 <Info>
   Keeping `Result` and `Tuple` separate prevents useful values from being
   ignored and keeps success checks reliable. Read [why the types stay
-  separate](/language/errors-and-result#result-and-tuple-stay-separate) for the
+  separate](/language/result#result-and-tuple-stay-separate) for the
   common pitfalls and the rules Forst uses to avoid them.
 </Info>
 

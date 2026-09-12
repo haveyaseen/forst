@@ -1093,3 +1093,7 @@ func (tc *TypeChecker) goFuncSignatureInPackage(pkg *types.Package, funcName str
 	}
 	return sig
 }
+
+
+
+

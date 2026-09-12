@@ -1,0 +1,37 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    func reserve(quantity Int) {
+    	ensure quantity is GreaterThan(0)
+    	return quantity
+    }
+
+    func main() {
+    	reserved := reserve(2)
+    	ensure reserved is Ok()
+    	println(reserved)
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    import "errors"
+
+    func reserve(quantity int) (int, error) {
+    	if !(quantity > 0) {
+    		return 0, errors.New("ensure quantity is Int.GreaterThan(0): want > 0")
+    	}
+    	return quantity, nil
+    }
+
+    func main() {
+    	reserved, err := reserve(2)
+    	if err != nil {
+    		panic(err)
+    	}
+    	println(reserved)
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -16,7 +16,7 @@ type P struct {
 }
 
 func (e E) Error() string {
-	return "error"
+	return "E"
 }
 
 func (e E) ForstErrorTag() string {

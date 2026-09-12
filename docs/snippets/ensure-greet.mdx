@@ -1,0 +1,8 @@
+```ft
+error EmptyName {}
+
+func greet(name String) {
+	ensure name is Min(1) else EmptyName{}
+	return "hello, " + name
+}
+```

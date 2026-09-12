@@ -1,0 +1,62 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    error OrderLocked { orderId: String }
+    error EmptyCart { orderId: String }
+
+    type Order = {
+    	id:     String,
+    	paid:   Bool,
+    	locked: Bool,
+    	items:  []String,
+    }
+
+    func fulfill(order Order): Result(String, Error) {
+    	if order.paid {
+    		ensure order.locked is False() else OrderLocked{ orderId: order.id }
+    		ensure order.items is Min(1) else EmptyCart{ orderId: order.id }
+    		return order.items[0]
+    	}
+    	return "awaiting payment"
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    type EmptyCart struct {
+    	orderId string
+    }
+
+    type Order struct {
+    	id     string
+    	items  []string
+    	locked bool
+    	paid   bool
+    }
+
+    type OrderLocked struct {
+    	orderId string
+    }
+
+    func (e EmptyCart) Error() string { return "error" }
+    func (e OrderLocked) Error() string { return "error" }
+
+    func (e EmptyCart) ForstErrorTag() string { return "main/EmptyCart" }
+    func (e OrderLocked) ForstErrorTag() string { return "main/OrderLocked" }
+
+    func fulfill(order Order) (string, error) {
+    	if order.paid {
+    		if order.locked {
+    			return "", OrderLocked{orderId: order.id}
+    		}
+    		if len(order.items) < 1 {
+    			return "", EmptyCart{orderId: order.id}
+    		}
+    		return order.items[0], nil
+    	}
+    	return "awaiting payment", nil
+    }
+    ```
+  </Tab>
+</Tabs>

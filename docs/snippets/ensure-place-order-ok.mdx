@@ -1,26 +1,25 @@
 <Tabs>
   <Tab title="Forst">
     ```ft
-    x := placeOrder({
+    order := placeOrder({
     	stockKeepingUnit: "ITEM-1",
     	quantity:         2,
     })
-    ensure x
-    // x is narrowed to the success type here
+    ensure order
+    println(order)
     ```
   </Tab>
   <Tab title="Generated Go">
     ```go
     // forst build
-    x, err := placeOrder(PlaceOrderInput{
+    order, err := placeOrder(PlaceOrderInput{
     	stockKeepingUnit: "ITEM-1",
     	quantity:         2,
     })
     if err != nil {
     	return err
     }
-    // x is the success value here
-    _ = x
+    println(order)
     ```
   </Tab>
 </Tabs>

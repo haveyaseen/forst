@@ -1,6 +1,15 @@
 <Tabs>
   <Tab title="Forst">
     ```ft
+    type User = {
+    	name: String,
+    }
+
+    type AppContext = {
+    	sessionId: *String,
+    	user: *User,
+    }
+
     is (ctx AppContext) LoggedIn() {
     	ensure ctx.sessionId is Present()
     	ensure ctx.user is Present()
@@ -10,14 +19,23 @@
   <Tab title="Generated Go">
     ```go
     // forst build
-    func G_LoggedIn(ctx AppContext) error {
-    	if ctx.SessionID == nil {
-    		return /* Present() failure */
+    type AppContext struct {
+    	sessionId *string
+    	user      *User
+    }
+
+    type User struct {
+    	name string
+    }
+
+    func G_HRerS5U4F3k(ctx AppContext) bool {
+    	if ctx.sessionId == nil {
+    		return false
     	}
-    	if ctx.User == nil {
-    		return /* Present() failure */
+    	if ctx.user == nil {
+    		return false
     	}
-    	return nil
+    	return true
     }
     ```
   </Tab>

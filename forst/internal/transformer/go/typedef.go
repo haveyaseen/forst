@@ -117,7 +117,7 @@ func (t *Transformer) emitNominalErrorErrorMethod(typeName ast.TypeIdent) {
 			Results: &goast.FieldList{List: []*goast.Field{{Type: goast.NewIdent("string")}}},
 		},
 		Body: &goast.BlockStmt{List: []goast.Stmt{
-			&goast.ReturnStmt{Results: []goast.Expr{&goast.BasicLit{Kind: token.STRING, Value: `"error"`}}},
+			&goast.ReturnStmt{Results: []goast.Expr{goQuotedStringLit(name)}},
 		}},
 	}
 	t.Output.AddFunction(fn)

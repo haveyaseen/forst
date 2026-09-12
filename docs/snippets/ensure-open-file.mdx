@@ -1,0 +1,36 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    import "os"
+    import "path/filepath"
+
+    func openFile(path String) {
+    	ensure filepath.IsAbs(path)
+    	file, err := os.Open(path)
+    	ensure !err
+    	return file
+    }
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    import (
+    	errors "errors"
+    	"os"
+    	"path/filepath"
+    )
+
+    func openFile(path string) (*os.File, error) {
+    	if !filepath.IsAbs(path) {
+    		return nil, errors.New("ensure Variable(filepath).IsAbs(Variable(path)) is Bool.True(): want true")
+    	}
+    	file, err := os.Open(path)
+    	if err != nil {
+    		return nil, err
+    	}
+    	return file, nil
+    }
+    ```
+  </Tab>
+</Tabs>

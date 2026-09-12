@@ -2,49 +2,7 @@
  * Browser bootstrap for Mintlify docs. Bundled into docs/forst-highlight.js by sync script.
  */
 
-/* global GRAMMAR, highlightToHtml, isForstLabel, looksLikeForstSource, walkSelfAndAncestors, hasExplicitFtLanguage, hasForstTabContext, isPlainTextFallback */
-
-/**
- * @param {HTMLElement} code
- * @returns {boolean}
- */
-function hasForstCodeBlockLabel(code) {
-  const root =
-    code.closest('[data-component-part="code-block-root"]') ||
-    code.closest('[data-component-part="code-group-root"]') ||
-    code.closest("pre")?.parentElement;
-
-  if (!root) return false;
-
-  const labelSelectors = [
-    '[data-component-part="code-block-language"]',
-    '[data-component-part="code-block-title"]',
-    '[data-component-part="code-group-tab"]',
-    "button[role='tab'][aria-selected='true']",
-  ];
-
-  for (const selector of labelSelectors) {
-    const el = root.querySelector(selector) || root.parentElement?.querySelector(selector);
-    if (el && isForstLabel(el.textContent)) return true;
-  }
-
-  const header = root.previousElementSibling;
-  if (header instanceof HTMLElement && isForstLabel(header.textContent)) return true;
-
-  return false;
-}
-
-/**
- * @param {HTMLElement} code
- * @returns {boolean}
- */
-function isForstBlock(code) {
-  if (hasExplicitFtLanguage(code)) return true;
-  if (hasForstTabContext(code, document)) return true;
-  if (hasForstCodeBlockLabel(code)) return true;
-  if (isPlainTextFallback(code) && looksLikeForstSource(code.textContent ?? "")) return true;
-  return false;
-}
+/* global GRAMMAR, highlightToHtml, isForstBlock */
 
 /**
  * @param {HTMLElement} code
@@ -71,7 +29,7 @@ function applyHighlightHtml(container, source) {
  * @param {HTMLElement} code
  */
 function highlightBlock(code) {
-  if (!isForstBlock(code) || alreadyHighlighted(code)) return;
+  if (!isForstBlock(code, document) || alreadyHighlighted(code)) return;
 
   const lineEls = code.querySelectorAll(":scope > .line");
   if (lineEls.length > 0) {

@@ -1,17 +1,24 @@
 <Tabs>
   <Tab title="Forst">
     ```ft
-    if x is Ok() {
-    	println(x) // x narrowed inside this branch
+    order := placeOrder({
+    	stockKeepingUnit: "ITEM-1",
+    	quantity:         2,
+    })
+    if order is Ok() {
+    	println(order)
     }
     ```
   </Tab>
   <Tab title="Generated Go">
     ```go
-    // forst build — Result lowers to (T, error)
-    x, xErr := one()
-    if xErr == nil {
-    	println(x)
+    // forst build — Result becomes a value and an error in Go
+    order, orderErr := placeOrder(PlaceOrderInput{
+    	stockKeepingUnit: "ITEM-1",
+    	quantity:         2,
+    })
+    if orderErr == nil {
+    	println(order)
     }
     ```
   </Tab>

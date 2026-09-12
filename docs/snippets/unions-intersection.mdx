@@ -1,0 +1,21 @@
+<Tabs>
+  <Tab title="Forst">
+    ```ft
+    type Named = {
+    	name: String,
+    }
+
+    type Entity = {
+    	id: Int,
+    }
+
+    type NamedEntity = Named & Entity
+    ```
+  </Tab>
+  <Tab title="Generated Go">
+    ```go
+    // forst build
+    // type NamedEntity: intersection Named & Entity is empty (unrelated types)
+    ```
+  </Tab>
+</Tabs>

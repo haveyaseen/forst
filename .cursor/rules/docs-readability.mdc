@@ -7,6 +7,7 @@ alwaysApply: false
 # Documentation readability
 
 Write for developers who use Forst. Do not assume compiler knowledge.
+
 ## Lead with the reader
 - Keep the page description broad. State the reader's goal without listing syntax, configuration, or implementation details.
 - Use the opening paragraph to explain the goal, practical benefit, and when the reader needs the feature.
@@ -14,6 +15,13 @@ Write for developers who use Forst. Do not assume compiler knowledge.
 - Start every section with a plain explanation before flags, types, protocols, or internals.
 - Put setup before usage. Put advanced design and implementation details later.
 - Use progressive detail. Let readers stop after completing their task.
+
+## Grow in detail
+- Open with why the feature exists. Prove that why with the smallest example that still looks like real code.
+- Each later section should add one capability the reader does not yet have.
+- Drive the explanation with the example. Do not open a section with a syntax inventory and then illustrate it.
+- A reader who stops after the first two sections should already be able to write a useful check or call.
+
 ## Use plain language
 - Prefer short sentences with one idea each.
 - Use active voice and speak directly to the reader.
@@ -24,21 +32,38 @@ Write for developers who use Forst. Do not assume compiler knowledge.
 - Avoid “not X but Y” phrasing. State the intended behavior directly.
 - Avoid the word “today”. Describe the current behavior directly.
 - Use hyphens only when grammar or a technical name requires them.
+- Skip compiler vocabulary on user-facing pages (for example subject, lower, emit, promote, AST). Describe the variable, field, or call instead.
+- If a term is necessary, introduce it only after an example it refers to, and point back at that example. Omit the term when ordinary words are enough.
+
 ## Make structure useful
 - Use task or outcome based headings. Prefer “Choose how Node runs” over “Runtime modes”.
 - Use numbered steps for sequences and bullets for independent rules.
 - Use tables only for real comparisons. Introduce each table in plain language.
+- Place a recap table after the examples it summarizes, not before.
 - Move caveats after the main workflow. Explain impact and the action to take.
 - Link to one canonical setup page instead of repeating installation blocks.
+
 ## Make examples teach
 - Name files and paths when an import depends on them.
 - Explain what a code block does before showing it.
-- Use realistic names consistently across related pages.
+- Keep each example as small as the section's use case allows. Prefer the short form the reader would write (`ensure !slot`) over the expanded form (`ensure slot is Nil()`), unless this section is teaching that expanded form.
+- Do not bind a name that later lines never read. If the only use of a name is to pass it to `ensure`, check the call or expression directly (`ensure stop()`, not `stopOk := stop()` then `ensure stopOk`).
+- Bind when later lines need the value, including an `else` block that prints or wraps it.
+- Use names from a real situation and reuse them for the rest of the page. Prefer `slot`, `speed`, `order`, and `paid` over placeholders such as `ok`, `flag`, `foo`, `x`, `b`, `p`, or `T`.
+- Name a binding for the value's role, not for one outcome of a check. A `Result` is still success or failure until the check passes, so `order` or `stopResult`, not `orderOk` or `stopOk`.
+- Every name in an example must be declared in that example or in an example already on the page.
+- Generated Go tabs must show the error value `forst build` actually returns. Do not replace it with a comment such as `return /* missing key error */`.
 - Keep examples focused and runnable. Verify syntax against tests or examples.
 - Explain the observable result after code when it is not obvious.
 - Show Promise and Effect examples together when both forms are supported.
+
 ## Review checklist
 - Can a Node or Go developer understand the opening without compiler context?
 - Does every section explain why the following detail matters?
 - Can the reader find the shortest path to a working result?
 - Are setup steps linked instead of copied?
+- Is every example the smallest that shows this use case?
+- Did we skip a binding that later lines never read?
+- Do variable names match a real situation, stay consistent, and avoid outcome-only names such as `stopOk`?
+- Did we skip compiler terms the reader does not need?
+- Do Generated Go tabs return the real error `forst build` emits?

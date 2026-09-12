@@ -7,22 +7,34 @@
     }
 
     func placeOrder(in PlaceOrderInput) {
-    	// in is already validated; business logic starts here
+    	ensure in.stockKeepingUnit is Min(1).Max(64)
+    	ensure in.quantity is Min(1).Max(99)
+    	// business logic starts here
     }
     ```
   </Tab>
   <Tab title="Generated Go">
     ```go
     // forst build
+    import (
+    	errors "errors"
+    	utf8 "unicode/utf8"
+    )
+
     type PlaceOrderInput struct {
-    	stockKeepingUnit string
     	quantity         int
+    	stockKeepingUnit string
     }
 
-    func placeOrder(in PlaceOrderInput) {
-    	if len(in.stockKeepingUnit) < 1 || len(in.stockKeepingUnit) > 64 { ... }
-    	if in.quantity < 1 || in.quantity > 99 { ... }
+    func placeOrder(in PlaceOrderInput) error {
+    	if utf8.RuneCountInString(in.stockKeepingUnit) < 1 || utf8.RuneCountInString(in.stockKeepingUnit) > 64 {
+    		return errors.New("ensure in.stockKeepingUnit is String.Min(1).Max(64): want String.Min(1).Max(64)")
+    	}
+    	if in.quantity < 1 || in.quantity > 99 {
+    		return errors.New("ensure in.quantity is Int.Min(1).Max(99): want Int.Min(1).Max(99)")
+    	}
     	// business logic starts here
+    	return nil
     }
     ```
   </Tab>

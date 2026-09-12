@@ -7,7 +7,9 @@
     }
 
     func placeOrder(in PlaceOrderInput) {
-    	// in is already validated; business logic starts here
+    	ensure in.stockKeepingUnit is Min(1).Max(64)
+    	ensure in.quantity is Min(1).Max(99)
+    	// business logic starts here
     }
     ```
   </Tab>

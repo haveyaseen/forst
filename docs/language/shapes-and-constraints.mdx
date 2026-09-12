@@ -10,20 +10,22 @@ import ShapesPlaceOrderTags from "/snippets/shapes-place-order-tags.mdx";
 import ShapesAddressCustomer from "/snippets/shapes-address-customer.mdx";
 
 Whenever you deal with untrusted data, you need validation as far up as
-possible. Have the compiler prove these rules where values are known at compile
-time, and enforce them at runtime as well.
+possible. Attach rules to types so the compiler can prove them when values are
+known at compile time, and write **`ensure`** for data that arrives at runtime.
 
 ## Constraints on types
 
 In Forst, types can declare exactly what makes data valid. You attach
-**constraints** directly to types, and the compiler enforces them at the API
-boundary and, where possible, at compile time.
+**constraints** directly to types. The compiler checks those rules when values
+are known at compile time. Dynamic request data must be validated with
+[`ensure`](/language/check-a-value) before you use it.
 
 <CatalogOrder />
 
-When `placeOrder` runs, the compiler has already proven the shape at compile
-time where values are known. Use [`ensure`](/language/check-a-value) for
-dynamic input. Invalid SKUs and quantities never reach your catalog logic.
+When `placeOrder` receives a literal that already satisfies the constraints,
+the compiler can prove that at compile time. For request bodies and other
+dynamic input, write `ensure` before business logic so invalid SKUs and
+quantities never reach your catalog.
 
 <Note>
   Forst also lets you define **your own** rules for types with
@@ -36,8 +38,8 @@ Constraints appear in two places:
 
 | Context | Syntax | Purpose |
 | --- | --- | --- |
-| **On types** (shapes, params) | `String.Min(1).Max(64)` | Validate at the boundary when data enters |
-| **In function bodies** | `ensure x is Min(1)` | Assert invariants at runtime |
+| **On types** (shapes, params) | `String.Min(1).Max(64)` | Record the rule on the type; prove it at compile time when values are known |
+| **In function bodies** | `ensure x is Min(1)` | Check dynamic values at runtime |
 
 The same built-in names work in both. For `Result` narrowing (`Ok`, `Err`) and
 pointer checks (`Nil`, `Present`), see
@@ -96,8 +98,9 @@ TypeScript interfaces:
 
 <ShapesAddressCustomer />
 
-Invalid nested data fails at the same boundary. You do not re-walk the tree in
-application code.
+Nested field constraints follow the same rules as top-level ones. Prove them at
+compile time when values are known, and check dynamic input with `ensure`.
+You do not re-walk the tree by hand in application code.
 
 ## Caveats
 

@@ -239,6 +239,11 @@ is (order Order) Shippable() {
 }
 
 func ship(order Order.Shippable()) {}
+
+func fulfill(order Order) {
+    ensure order is Shippable() else CannotShip{}
+    ship(order)
+}
 ```
 
 After `ensure order is Shippable() else CannotShip{}`, `ship(order)` runs

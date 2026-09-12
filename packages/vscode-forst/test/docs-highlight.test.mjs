@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   hasExplicitFtLanguage,
+  hasForstCodeBlockLabel,
   hasForstTabContext,
   isForstBlock,
   isForstLabel,
@@ -26,6 +27,21 @@ const helloSnippetPath = path.join(repoRoot, "docs", "snippets", "hello.ft.mdx")
 
 const grammar = JSON.parse(fs.readFileSync(grammarPath, "utf8"));
 
+/** @param {string} selector @param {HTMLElement} node */
+function matchesSimpleSelector(selector, node) {
+  if (selector === '[role="tab"]') return node.getAttribute("role") === "tab";
+  if (selector === '[role="tabpanel"]') return node.getAttribute("role") === "tabpanel";
+  const attrEq = selector.match(/^\[([^=\]]+)="([^"]*)"\]$/);
+  if (attrEq) return node.getAttribute(attrEq[1]) === attrEq[2];
+  const attrHas = selector.match(/^\[([^=\]]+)\]$/);
+  if (attrHas) return node.getAttribute(attrHas[1]) != null;
+  if (selector.startsWith("[role=\"tab\"][aria-controls=\"")) {
+    const panelId = selector.match(/aria-controls="([^"]+)"/)?.[1];
+    return node.getAttribute("role") === "tab" && node.getAttribute("aria-controls") === panelId;
+  }
+  return false;
+}
+
 /** @param {Record<string, string | null>} attrs */
 function el(tag, attrs = {}, children = []) {
   /** @type {HTMLElement & { _children: HTMLElement[], _parent: HTMLElement | null }} */
@@ -39,6 +55,13 @@ function el(tag, attrs = {}, children = []) {
     textContent: "",
     dataset: {},
     parentElement: null,
+    closest(selector) {
+      for (const ancestor of [this, ...walkAncestors(this)]) {
+        if (matchesSimpleSelector(selector, ancestor)) return ancestor;
+        if (selector === "pre" && ancestor.tagName === "PRE") return ancestor;
+      }
+      return null;
+    },
     getAttribute(name) {
       return this._attrs[name] ?? null;
     },
@@ -50,15 +73,15 @@ function el(tag, attrs = {}, children = []) {
       return false;
     },
     querySelector(selector) {
-      return null;
+      const all = this.querySelectorAll(selector);
+      return all[0] ?? null;
     },
     querySelectorAll(selector) {
       /** @type {HTMLElement[]} */
       const out = [];
-      const visit = (node) => {
-        if (selector === '[role="tab"]' && node.getAttribute("role") === "tab") out.push(node);
-        if (selector === '[role="tabpanel"]' && node.getAttribute("role") === "tabpanel") out.push(node);
-        for (const child of node._children ?? []) visit(child);
+      const visit = (n) => {
+        if (matchesSimpleSelector(selector, n)) out.push(n);
+        for (const child of n._children ?? []) visit(child);
       };
       visit(this);
       return out;
@@ -70,6 +93,14 @@ function el(tag, attrs = {}, children = []) {
   }
   node.textContent = children.map((c) => c.textContent ?? "").join("");
   return node;
+}
+
+/** @param {HTMLElement} node */
+function walkAncestors(node) {
+  /** @type {HTMLElement[]} */
+  const out = [];
+  for (let cur = node.parentElement; cur; cur = cur.parentElement) out.push(cur);
+  return out;
 }
 
 /** @param {HTMLElement} node */

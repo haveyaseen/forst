@@ -16,11 +16,11 @@ type ParseError struct {
 }
 
 func (e IoError) Error() string {
-	return "error"
+	return "IoError"
 }
 
 func (e ParseError) Error() string {
-	return "error"
+	return "ParseError"
 }
 
 func (e IoError) ForstErrorTag() string {

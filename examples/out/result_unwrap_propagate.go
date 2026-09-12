@@ -11,7 +11,7 @@ type InnerFail struct {
 }
 
 func (e InnerFail) Error() string {
-	return "error"
+	return "InnerFail"
 }
 
 func (e InnerFail) ForstErrorTag() string {

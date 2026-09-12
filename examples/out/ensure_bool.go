@@ -11,7 +11,7 @@ type FlagFail struct {
 }
 
 func (e FlagFail) Error() string {
-	return "error"
+	return "FlagFail"
 }
 
 func (e FlagFail) ForstErrorTag() string {

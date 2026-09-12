@@ -11,7 +11,7 @@ type NotPositive struct {
 }
 
 func (e NotPositive) Error() string {
-	return "error"
+	return "NotPositive"
 }
 
 func (e NotPositive) ForstErrorTag() string {

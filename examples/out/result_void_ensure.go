@@ -11,7 +11,7 @@ type NeedFailed struct {
 }
 
 func (e NeedFailed) Error() string {
-	return "error"
+	return "NeedFailed"
 }
 
 func (e NeedFailed) ForstErrorTag() string {

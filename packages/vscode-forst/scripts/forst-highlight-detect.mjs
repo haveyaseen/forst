@@ -126,9 +126,10 @@ export function hasForstCodeBlockLabel(code) {
   const closest = code.closest?.bind(code);
   if (!closest) return false;
 
+  // Scope to the owning code block only. Do not walk up to code-group-root:
+  // that finds sibling Forst tabs and mis-labels Generated Go panels.
   const root =
     closest('[data-component-part="code-block-root"]') ||
-    closest('[data-component-part="code-group-root"]') ||
     closest("pre")?.parentElement;
 
   if (!root) return false;
@@ -136,12 +137,10 @@ export function hasForstCodeBlockLabel(code) {
   const labelSelectors = [
     '[data-component-part="code-block-language"]',
     '[data-component-part="code-block-title"]',
-    '[data-component-part="code-group-tab"]',
-    "button[role='tab'][aria-selected='true']",
   ];
 
   for (const selector of labelSelectors) {
-    const el = root.querySelector(selector) || root.parentElement?.querySelector(selector);
+    const el = root.querySelector(selector);
     if (el && isForstLabel(el.textContent)) return true;
   }
 

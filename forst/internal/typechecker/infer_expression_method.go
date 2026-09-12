@@ -67,6 +67,7 @@ func (tc *TypeChecker) inferExpressionMethodCall(expr ast.Node) ([]ast.TypeNode,
 
 // inferImportLocalFunctionAsMethodCall types `filepath.IsAbs(path)` when the parser
 // emits a MethodCallNode (ensure subjects) instead of a dotted FunctionCallNode.
+// Lexical locals and parameters shadow imported package identifiers.
 func (tc *TypeChecker) inferImportLocalFunctionAsMethodCall(e ast.MethodCallNode, argTypes [][]ast.TypeNode) ([]ast.TypeNode, bool, error) {
 	vn, ok := e.Receiver.(ast.VariableNode)
 	if !ok {
@@ -74,6 +75,9 @@ func (tc *TypeChecker) inferImportLocalFunctionAsMethodCall(e ast.MethodCallNode
 	}
 	pkgName := string(vn.Ident.ID)
 	if pkgName == "" || strings.Contains(pkgName, ".") {
+		return nil, false, nil
+	}
+	if _, exists := tc.scopeStack.LookupVariableType(ast.Identifier(pkgName)); exists {
 		return nil, false, nil
 	}
 	if !tc.IsImportedLocalName(pkgName) && tc.goPackageForImportLocal(pkgName) == nil {
